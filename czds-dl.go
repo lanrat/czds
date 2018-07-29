@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log" // TODO remove this
 	"net/http"
 	"os"
 	"path"
@@ -14,29 +13,29 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
-    "sync/atomic"
 )
 
 var (
 	parallel = flag.Uint("parallel", 5, "Number of concurrent downloads to run")
 	token    = flag.String("token", "", "Autorization token for CZDS api")
 	out      = flag.String("out", ".", "Path to save downloaded zones to")
-    keepName = flag.Bool("keepname", false, "Use filename from http header and not {ZONE}.zone.gz")
+	keepName = flag.Bool("keepname", false, "Use filename from http header and not {ZONE}.zone.gz")
 
 	noFileErr              = fmt.Errorf("Unknown Filename")
 	filenameRe             = regexp.MustCompile("\\d{8}-(.*?)-zone-data.txt.gz")
 	loadDone   chan bool   = make(chan bool)
 	inputChan  chan string = make(chan string, 100)
 	work       sync.WaitGroup
-    numZones int
-    savedZones int32
+	numZones   int
+	savedZones int32
 )
 
 const (
 	base     = "https://czds.icann.org"
 	listPath = base + "/en/user-zone-data-urls.json?token=%s"
-	timeout  = 600 * time.Second
+	timeout  = 600 * time.Second // 10 min
 )
 
 // given the filename from czds in the format {date}-{zone}-zone-data.txt.gz
@@ -54,11 +53,11 @@ func main() {
 	flag.Parse()
 	if *parallel < 1 {
 		fmt.Println("parallel must be a positive number")
-        return
+		return
 	}
 	if token == nil || len(*token) == 0 {
 		fmt.Println("Must pass authorization token")
-        return
+		return
 	}
 
 	// create output directory if it does not exist
@@ -67,26 +66,24 @@ func main() {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(*out, 0770)
 			if err != nil {
-                fmt.Println(err)
-                return
+				fmt.Println(err)
+				return
 			}
 		} else {
-            fmt.Println(err)
-            return
+			fmt.Println(err)
+			return
 		}
 	}
 
-	//fmt.Printf("Starting %d workers\n", *parallel)
+	// start worker threads
 	go loadList()
 	for i := uint(0); i < *parallel; i++ {
 		go worker()
 	}
-	//go status()
-	//fmt.Println("All workers Started")
 
 	<-loadDone
 	work.Wait()
-    fmt.Printf("Saved %d/%d zones\n", savedZones, numZones)
+	fmt.Printf("Saved %d/%d zones\n", savedZones, numZones)
 }
 
 // connect to czds, get the domain list, and add each url to the inputChan
@@ -97,7 +94,7 @@ func loadList() {
 		os.Exit(1)
 	}
 	//fmt.Printf("found %d zones\n", len(list))
-    numZones = len(list)
+	numZones = len(list)
 	for _, url := range list {
 		work.Add(1)
 		inputChan <- url
@@ -116,10 +113,11 @@ func worker() {
 			// do work
 			err := zoneDL(url)
 			if err != nil {
-				log.Fatal(err)
+				fmt.Println(err)
+				os.Exit(2)
 			} else {
-                atomic.AddInt32(&savedZones, 1)
-            }
+				atomic.AddInt32(&savedZones, 1)
+			}
 			work.Done()
 		} else {
 			// done
@@ -128,14 +126,13 @@ func worker() {
 	}
 }
 
-// given a full url, do something with it
-// currently just prints some information
-// future versions will download a file
+// given a full url, get the filename and size
+// if there is not already a local file with the same size
+// download it
 func zoneDL(url string) error {
 	httpClient := http.Client{
 		Timeout: timeout,
 	}
-	//fmt.Println(url)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -158,38 +155,43 @@ func zoneDL(url string) error {
 	}
 	hm := headerMap(cd)
 	filenameHeader := hm["filename"]
-    filename := filenameHeader
+	filename := filenameHeader
 
-    cl := res.Header.Get("Content-Length")
-    sizeHeader, err := strconv.ParseInt(cl, 10, 64)
-    if err != nil {
-        return err
-    }
+	cl := res.Header.Get("Content-Length")
+	sizeHeader, err := strconv.ParseInt(cl, 10, 64)
+	if err != nil {
+		return err
+	}
 
-    if !*keepName {
-        zone := zoneFromFilename(filenameHeader)
-        if zone == "" {
-            return fmt.Errorf("%s has no zone name", url)
-        }
+	if !*keepName {
+		zone := zoneFromFilename(filenameHeader)
+		if zone == "" {
+			return fmt.Errorf("%s has no zone name", url)
+		}
 
-        filename = fmt.Sprintf("%s.zone.gz", zone)
-    }
+		filename = fmt.Sprintf("%s.zone.gz", zone)
+	}
 	fullPath := path.Join(*out, filename)
 
 	// test file existance and size
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-            return err
-		} // ELSE: file is new, download it
+			return err
+		} else { // ELSE: file is new, download it
+			//fmt.Printf("%s downloading\n", fullPath)
+		}
 	} else {
 		if fi.Size() == sizeHeader {
-            // file is already downloaded; skip it
-            return nil
-        } // ELSE file is wrong size, re-download
+			// file is already downloaded; skip it
+			//fmt.Printf("%s already exists\n", fullPath)
+			return nil
+		} else { // ELSE file is wrong size, re-download
+			fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
+		}
 	}
 
-	// start the actuall file download
+	// start the file download
 	file, err := os.Create(fullPath)
 	if err != nil {
 		return err
