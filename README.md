@@ -12,7 +12,7 @@ Usage of ./czds-dl:
   -parallel uint
         Number of concurrent downloads to run (default 5)
   -token string
-        Autorization token for CZDS api
+        Authorization token for CZDS api
 ```
 
 ### Example

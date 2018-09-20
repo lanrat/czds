@@ -19,14 +19,14 @@ import (
 
 var (
 	parallel = flag.Uint("parallel", 5, "Number of concurrent downloads to run")
-	token    = flag.String("token", "", "Autorization token for CZDS api")
+	token    = flag.String("token", "", "Authorization token for CZDS api")
 	out      = flag.String("out", ".", "Path to save downloaded zones to")
 	keepName = flag.Bool("keepname", false, "Use filename from http header and not {ZONE}.zone.gz")
 
-	noFileErr              = fmt.Errorf("Unknown Filename")
-	filenameRe             = regexp.MustCompile("\\d{8}-(.*?)-zone-data.txt.gz")
-	loadDone   chan bool   = make(chan bool)
-	inputChan  chan string = make(chan string, 100)
+	errNoFile  = fmt.Errorf("Unknown Filename")
+	filenameRe = regexp.MustCompile("\\d{8}-(.*?)-zone-data.txt.gz")
+	loadDone   = make(chan bool)
+	inputChan  = make(chan string, 100)
 	work       sync.WaitGroup
 	numZones   int
 	savedZones int32
@@ -38,7 +38,7 @@ const (
 	timeout  = 600 * time.Second // 10 min
 )
 
-// given the filename from czds in the format {date}-{zone}-zone-data.txt.gz
+// given the filename from CZDS in the format {date}-{zone}-zone-data.txt.gz
 // return zone
 func zoneFromFilename(filename string) string {
 	match := filenameRe.FindStringSubmatch(filename)
@@ -86,7 +86,7 @@ func main() {
 	fmt.Printf("Saved %d/%d zones\n", savedZones, numZones)
 }
 
-// connect to czds, get the domain list, and add each url to the inputChan
+// connect to CZDS, get the domain list, and add each url to the inputChan
 func loadList() {
 	list, err := getList()
 	if err != nil {
@@ -151,7 +151,7 @@ func zoneDL(url string) error {
 
 	cd := res.Header.Get("Content-Disposition")
 	if cd == "" {
-		return noFileErr
+		return errNoFile
 	}
 	hm := headerMap(cd)
 	filenameHeader := hm["filename"]
@@ -173,22 +173,22 @@ func zoneDL(url string) error {
 	}
 	fullPath := path.Join(*out, filename)
 
-	// test file existance and size
+	// test file existence and size
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
-		} else { // ELSE: file is new, download it
+		} /*else { // ELSE: file is new, download it
 			//fmt.Printf("%s downloading\n", fullPath)
-		}
+		}*/
 	} else {
 		if fi.Size() == sizeHeader {
 			// file is already downloaded; skip it
 			//fmt.Printf("%s already exists\n", fullPath)
 			return nil
-		} else { // ELSE file is wrong size, re-download
-			fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
 		}
+		// ELSE file is wrong size, re-download
+		fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
 	}
 
 	// start the file download
