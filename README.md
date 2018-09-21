@@ -29,3 +29,9 @@ Install a recent version of go
 $ make
 go build -o czds-dl czds-dl.go
 ```
+
+### [Docker](https://hub.docker.com/r/lanrat/czds-dl/)
+
+```
+docker run --rm -v /path/to/zones/:/zones lanrat/czds-dl -token $API_TOKEN
+```
