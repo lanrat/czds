@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	parallel = flag.Uint("parallel", 5, "Number of concurrent downloads to run")
-	token    = flag.String("token", "", "Authorization token for CZDS api")
-	out      = flag.String("out", ".", "Path to save downloaded zones to")
-	keepName = flag.Bool("keepname", false, "Use filename from http header and not {ZONE}.zone.gz")
+	parallel   = flag.Uint("parallel", 5, "Number of concurrent downloads to run")
+	token      = flag.String("token", "", "Authorization token for CZDS api")
+	out        = flag.String("out", ".", "Path to save downloaded zones to")
+	keepName   = flag.Bool("keepname", false, "Use filename from http header and not {ZONE}.zone.gz")
+	redownload = flag.Bool("redownload", false, "Force redownloading zone if it already exists on local disk")
 
 	errNoFile  = fmt.Errorf("Unknown Filename")
 	filenameRe = regexp.MustCompile("\\d{8}-(.*?)-zone-data.txt.gz")
@@ -182,13 +183,17 @@ func zoneDL(url string) error {
 			//fmt.Printf("%s downloading\n", fullPath)
 		}*/
 	} else {
-		if fi.Size() == sizeHeader {
-			// file is already downloaded; skip it
-			//fmt.Printf("%s already exists\n", fullPath)
+		if *redownload {
+			if fi.Size() == sizeHeader {
+				// file is already downloaded; skip it
+				//fmt.Printf("%s already exists\n", fullPath)
+				return nil
+			}
+			// ELSE file is wrong size, re-download
+			fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
+		} else {
 			return nil
 		}
-		// ELSE file is wrong size, re-download
-		fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
 	}
 
 	// start the file download
