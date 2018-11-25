@@ -25,7 +25,7 @@ var (
 	redownload = flag.Bool("redownload", false, "Force redownloading zone if it already exists on local disk")
 
 	errNoFile  = fmt.Errorf("Unknown Filename")
-	filenameRe = regexp.MustCompile("\\d{8}-(.*?)-zone-data.txt.gz")
+	filenameRe = regexp.MustCompile(`\d{8}-(.*?)-zone-data.txt.gz`)
 	loadDone   = make(chan bool)
 	inputChan  = make(chan string, 100)
 	work       sync.WaitGroup
