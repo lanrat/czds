@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -53,12 +54,10 @@ func main() {
 	// check flags
 	flag.Parse()
 	if *parallel < 1 {
-		fmt.Println("parallel must be a positive number")
-		return
+		log.Fatal("parallel must be a positive number")
 	}
 	if token == nil || len(*token) == 0 {
-		fmt.Println("Must pass authorization token")
-		return
+		log.Fatal("Must pass authorization token")
 	}
 
 	// create output directory if it does not exist
@@ -67,11 +66,10 @@ func main() {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(*out, 0770)
 			if err != nil {
-				fmt.Println(err)
-				return
+				log.Fatal(err)
 			}
 		} else {
-			fmt.Println(err)
+			log.Fatal(err)
 			return
 		}
 	}
@@ -91,8 +89,7 @@ func main() {
 func loadList() {
 	list, err := getList()
 	if err != nil {
-		fmt.Print(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	//fmt.Printf("found %d zones\n", len(list))
 	numZones = len(list)
@@ -114,8 +111,7 @@ func worker() {
 			// do work
 			err := zoneDL(url)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(2)
+				log.Fatal(err)
 			} else {
 				atomic.AddInt32(&savedZones, 1)
 			}
@@ -186,11 +182,11 @@ func zoneDL(url string) error {
 		if *redownload {
 			if fi.Size() == sizeHeader {
 				// file is already downloaded; skip it
-				//fmt.Printf("%s already exists\n", fullPath)
+				//log.Printf("%s already exists\n", fullPath)
 				return nil
 			}
 			// ELSE file is wrong size, re-download
-			fmt.Printf("%s is wrong size, re-downloading\n", fullPath)
+			log.Printf("%s is wrong size, re-downloading\n", fullPath)
 		} else {
 			return nil
 		}
