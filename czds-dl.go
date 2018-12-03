@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,7 +17,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -113,7 +113,7 @@ func worker() {
 			err := zoneDL(url)
 			if err != nil {
 				//log.Fatal(errors.Wrap(err, "unable to download zone "+ url))
-				log.Println(errors.Wrap(err, "unable to download zone "+ url))
+				log.Println(errors.Wrap(err, "unable to download zone "+url))
 				// TODO I'm skipping this zone...
 			} else {
 				atomic.AddInt32(&savedZones, 1)
@@ -177,7 +177,7 @@ func zoneDL(url string) error {
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errors.Wrap(err,"error stating file")
+			return errors.Wrap(err, "error stating file")
 		} /*else { // ELSE: file is new, download it
 			//fmt.Printf("%s downloading\n", fullPath)
 		}*/
