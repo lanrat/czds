@@ -1,8 +1,12 @@
 FROM golang:alpine
 
-WORKDIR /go/src/
+RUN apk update && apk add --no-cache git tzdata
+
+WORKDIR /go/app/
 COPY . .
 
+ENV CGO_ENABLED=0
+#RUN go get .
 RUN go build -o /go/bin/czds-dl
 
 WORKDIR /zones

@@ -16,6 +16,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -89,7 +90,7 @@ func main() {
 func loadList() {
 	list, err := getList()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(errors.Wrap(err, "unable to get download list"))
 	}
 	//fmt.Printf("found %d zones\n", len(list))
 	numZones = len(list)
@@ -111,7 +112,9 @@ func worker() {
 			// do work
 			err := zoneDL(url)
 			if err != nil {
-				log.Fatal(err)
+				//log.Fatal(errors.Wrap(err, "unable to download zone "+ url))
+				log.Println(errors.Wrap(err, "unable to download zone "+ url))
+				// TODO I'm skipping this zone...
 			} else {
 				atomic.AddInt32(&savedZones, 1)
 			}
@@ -133,17 +136,17 @@ func zoneDL(url string) error {
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "HTTP Request error")
 	}
 
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "HTTP.Do error")
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("%s (%d)", res.Status, res.StatusCode)
+		return errors.Wrap(fmt.Errorf("%s (%d)", res.Status, res.StatusCode), "non 200 status code on download")
 	}
 
 	cd := res.Header.Get("Content-Disposition")
@@ -157,7 +160,7 @@ func zoneDL(url string) error {
 	cl := res.Header.Get("Content-Length")
 	sizeHeader, err := strconv.ParseInt(cl, 10, 64)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Unable to parse http content length")
 	}
 
 	if !*keepName {
@@ -174,7 +177,7 @@ func zoneDL(url string) error {
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return errors.Wrap(err,"error stating file")
 		} /*else { // ELSE: file is new, download it
 			//fmt.Printf("%s downloading\n", fullPath)
 		}*/
@@ -195,13 +198,13 @@ func zoneDL(url string) error {
 	// start the file download
 	file, err := os.Create(fullPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating file")
 	}
 	defer file.Close()
 
 	n, err := io.Copy(file, res.Body)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to write to file")
 	}
 	if n == 0 {
 		return fmt.Errorf("%s was empty", filename)
