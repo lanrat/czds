@@ -8,7 +8,7 @@ Implements a client for the [CZDS REST API](https://github.com/icann/czds-api-cl
 
  * Can be used as a standalone client or as an API for another client
  * Automatically refreshes authorization token if expired during download
- * Can save download zones as names by `Content-Disposition` or URL name
+ * Can save downloaded zones as named by `Content-Disposition` or URL name
  * Can compare local and remote files size and modification time to skip redownloading unchanged zones
  * Can download multiple zones in parallel
  * [Docker](#docker) image available
