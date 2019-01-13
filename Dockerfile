@@ -1,9 +1,9 @@
 FROM golang:alpine
 
-WORKDIR /go/src/
+WORKDIR /app/
 COPY . .
 
-RUN go build -o /go/bin/czds-dl
+RUN CGO_ENABLED=0 go build  -o /go/bin/czds-dl cmd/czds-dl.go
 
 WORKDIR /zones
 RUN chown 1000:1000 $(pwd)

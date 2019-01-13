@@ -5,3 +5,4 @@ Dockerfile
 LICENSE
 Makefile
 README.md
+go.sum
