@@ -53,7 +53,7 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 
 ### Building
 
-Building from source requires go > 1.11 for module support
+Building from source requires go >= 1.11 for module support
 
 ```
 $ make
