@@ -21,6 +21,11 @@ const (
 	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
 	// TestBaseURL testing url endpoint
 	TestBaseURL = "https://czds-api-test.icann.org"
+
+	// AuthURL production url endpoint
+	AuthURL = "https://account-api.icann.org/api/authenticate"
+	// BaseURL production url endpoint
+	BaseURL = "https://czds-api.icann.org/"
 )
 
 var (

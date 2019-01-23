@@ -15,8 +15,8 @@ var (
 	username        = flag.String("username", "", "username to authenticate with")
 	password        = flag.String("password", "", "password to authenticate with")
 	parallel        = flag.Uint("parallel", 5, "number of zones to download in parallel")
-	authURL         = flag.String("authurl", czds.TestAuthURL, "authenticate url for JWT token")
-	baseURL         = flag.String("baseurl", czds.TestBaseURL, "base URL for CZDS service")
+	authURL         = flag.String("authurl", czds.AuthURL, "authenticate url for JWT token")
+	baseURL         = flag.String("baseurl", czds.BaseURL, "base URL for CZDS service")
 	outDir          = flag.String("out", ".", "path to save downloaded zones to")
 	urlName         = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	forceRedownload = flag.Bool("redownload", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
@@ -135,7 +135,7 @@ func worker() {
 }
 
 func zoneDownload(dl czds.DownloadLink) error {
-	v("attempting to download '%s'", dl.URL)
+	v("starting download '%s'", dl.URL)
 	info, err := dl.GetInfo()
 	if err != nil {
 		return err

@@ -17,9 +17,9 @@ Implements a client for the [CZDS REST API](https://github.com/icann/czds-api-cl
 ```
 Usage of ./czds-dl:
   -authurl string
-        authenticate url for JWT token (default "https://account-api-test.icann.org/api/authenticate")
+        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
   -baseurl string
-        base URL for CZDS service (default "https://czds-api-test.icann.org")
+        base URL for CZDS service (default "https://czds-api.icann.org/")
   -out string
         path to save downloaded zones to (default ".")
   -parallel uint
@@ -39,16 +39,16 @@ Usage of ./czds-dl:
 ### Example
 ```
 $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
-2019/01/12 16:23:51 Authenticating to https://account-api-test.icann.org/api/authenticate
+2019/01/12 16:23:51 Authenticating to https://account-api.icann.org/api/authenticate
 2019/01/12 16:23:52 'zones' does not exist, creating
 2019/01/12 16:23:52 requesting download links
 2019/01/12 16:23:54 received 5 zone links
 2019/01/12 16:23:54 starting 5 parallel downloads
-2019/01/12 16:23:54 attempting to download 'https://czds-api-test.icann.org/czds/downloads/example2.zone'
-2019/01/12 16:23:54 attempting to download 'https://czds-api-test.icann.org/czds/downloads/example4.zone'
-2019/01/12 16:23:54 attempting to download 'https://czds-api-test.icann.org/czds/downloads/example1.zone'
-2019/01/12 16:23:54 attempting to download 'https://czds-api-test.icann.org/czds/downloads/example3.zone'
-2019/01/12 16:23:54 attempting to download 'https://czds-api-test.icann.org/czds/downloads/example5.zone'
+2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example2.zone'
+2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example4.zone'
+2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example1.zone'
+2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example3.zone'
+2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
 ### Building
