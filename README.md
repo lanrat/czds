@@ -2,9 +2,9 @@
 
 ## Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
 
-## The API this program uses is being deprecated on January 28th 2019.
+## The API this program uses has been deprecated on January 28th 2019.
 
-## The [NEXT](https://github.com/lanrat/czds/tree/next) branch contains an updated version of this client with support for the new API.
+## The [MASTER](https://github.com/lanrat/czds/tree/master) branch contains an updated version of this client with support for the new API.
 
 After the new API goes live the `next` branch will be moved to master.
 
