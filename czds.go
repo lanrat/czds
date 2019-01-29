@@ -17,15 +17,15 @@ import (
 )
 
 const (
-	// TestAuthURL testing url endpoint
-	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
-	// TestBaseURL testing url endpoint
-	TestBaseURL = "https://czds-api-test.icann.org"
-
 	// AuthURL production url endpoint
 	AuthURL = "https://account-api.icann.org/api/authenticate"
 	// BaseURL production url endpoint
 	BaseURL = "https://czds-api.icann.org/"
+
+	// TestAuthURL testing url endpoint
+	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
+	// TestBaseURL testing url endpoint
+	TestBaseURL = "https://czds-api-test.icann.org"
 )
 
 var (
@@ -76,12 +76,6 @@ type DownloadInfo struct {
 	Filename      string
 }
 
-// DownloadLink for a single zone from the Client
-type DownloadLink struct {
-	URL    string
-	client *Client
-}
-
 // this function dowa NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
 	// used a mutex to prevent multiple threads from authenticating at the same time
@@ -105,12 +99,7 @@ func (c *Client) httpClient() *http.Client {
 	return httpClient
 }
 
-// Download the DownloadLink zone to destinationPath
-func (dl *DownloadLink) Download(destinationPath string) error {
-	return dl.client.downloadZone(dl.URL, destinationPath)
-}
-
-func (c *Client) downloadZone(url, destinationPath string) error {
+func (c *Client) DownloadZone(url, destinationPath string) error {
 	err := c.checkAuth()
 	if err != nil {
 		return err
@@ -148,13 +137,7 @@ func (c *Client) downloadZone(url, destinationPath string) error {
 	return nil
 }
 
-// GetInfo returns DownloadInfo populated with information from HTTP headers
-// in a HEAD request
-func (dl *DownloadLink) GetInfo() (*DownloadInfo, error) {
-	return dl.client.getDownloadInfo(dl.URL)
-}
-
-func (c *Client) getDownloadInfo(url string) (*DownloadInfo, error) {
+func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	err := c.checkAuth()
 	if err != nil {
 		return nil, err
@@ -210,7 +193,7 @@ func (c *Client) getDownloadInfo(url string) (*DownloadInfo, error) {
 }
 
 // GetLinks returns the DownloadLinks available to the authenticated user
-func (c *Client) GetLinks() ([]DownloadLink, error) {
+func (c *Client) GetLinks() ([]string, error) {
 	err := c.checkAuth()
 	if err != nil {
 		return nil, err
@@ -236,12 +219,9 @@ func (c *Client) GetLinks() ([]DownloadLink, error) {
 	if err != nil {
 		return nil, err
 	}
-	dLinks := make([]DownloadLink, 0, len(links))
+	dLinks := make([]string, 0, len(links))
 	for _, url := range links {
-		dLinks = append(dLinks, DownloadLink{
-			URL:    url,
-			client: c,
-		})
+		dLinks = append(dLinks, url)
 	}
 
 	return dLinks, nil
