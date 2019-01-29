@@ -82,6 +82,7 @@ type DownloadLink struct {
 	client *Client
 }
 
+// this function dowa NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
 	// used a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
@@ -126,7 +127,7 @@ func (c *Client) downloadZone(url, destinationPath string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error on downloadZone, got status %s", resp.Status)
+		return fmt.Errorf("error on downloadZone, got status %s %s", resp.Status, http.StatusText(resp.StatusCode))
 	}
 
 	// start the file download
@@ -170,7 +171,7 @@ func (c *Client) getDownloadInfo(url string) (*DownloadInfo, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error on getZoneInfo, got Status %s", resp.Status)
+		return nil, fmt.Errorf("Error on getZoneInfo, got Status %s (%s)", resp.Status, http.StatusText(resp.StatusCode))
 	}
 
 	lastModifiedStr := resp.Header.Get("Last-Modified")
@@ -228,7 +229,7 @@ func (c *Client) GetLinks() ([]DownloadLink, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error on getAccessToken, got Status %s", resp.Status)
+		return nil, fmt.Errorf("Error on getAccessToken, got Status %s %s", resp.Status, http.StatusText(resp.StatusCode))
 	}
 	links := make([]string, 0, 10)
 	err = json.NewDecoder(resp.Body).Decode(&links)
@@ -266,7 +267,7 @@ func (c *Client) Authenticate() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error on getAccessToken, got Status %s", resp.Status)
+		return fmt.Errorf("Error on getAccessToken, got Status %s %s", resp.Status, http.StatusText(resp.StatusCode))
 	}
 
 	authResp := authResponse{}

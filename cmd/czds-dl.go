@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -124,7 +125,9 @@ func worker() {
 			// do work
 			err := zoneDownload(dl)
 			if err != nil {
-				log.Fatal(err)
+				// don't stop on an error that only affects a single zone
+				// fixes occasional HTTP 500s from CZDS
+				log.Print(err)
 			}
 			work.Done()
 		} else {
@@ -138,7 +141,7 @@ func zoneDownload(dl czds.DownloadLink) error {
 	v("starting download '%s'", dl.URL)
 	info, err := dl.GetInfo()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s [%s]", err, dl.URL)
 	}
 	// use filename from url or header?
 	localFileName := info.Filename
