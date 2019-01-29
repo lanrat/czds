@@ -1,5 +1,5 @@
 
-SOURCES := czds.go jwt/jwt.go cmd/czds-dl.go
+SOURCES := *.go jwt/jwt.go cmd/czds-dl.go
 
 .PHONY: all fmt clean install docker
 
