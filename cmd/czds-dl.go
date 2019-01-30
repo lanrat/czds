@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -23,7 +24,7 @@ var (
 	verbose         = flag.Bool("verbose", false, "enable verbose logging")
 
 	loadDone  = make(chan bool)
-	inputChan = make(chan czds.DownloadLink, 100)
+	inputChan = make(chan string, 100)
 	work      sync.WaitGroup
 	client    *czds.Client
 )
@@ -108,7 +109,7 @@ func main() {
 	work.Wait()
 }
 
-func addLinks(downloads []czds.DownloadLink) {
+func addLinks(downloads []string) {
 	for _, dl := range downloads {
 		work.Add(1)
 		inputChan <- dl
@@ -124,7 +125,9 @@ func worker() {
 			// do work
 			err := zoneDownload(dl)
 			if err != nil {
-				log.Fatal(err)
+				// don't stop on an error that only affects a single zone
+				// fixes occasional HTTP 500s from CZDS
+				log.Print(err)
 			}
 			work.Done()
 		} else {
@@ -134,22 +137,22 @@ func worker() {
 	}
 }
 
-func zoneDownload(dl czds.DownloadLink) error {
-	v("starting download '%s'", dl.URL)
-	info, err := dl.GetInfo()
+func zoneDownload(dl string) error {
+	v("starting download '%s'", dl)
+	info, err := client.GetDownloadInfo(dl)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s [%s]", err, dl)
 	}
 	// use filename from url or header?
 	localFileName := info.Filename
 	if *urlName {
-		localFileName = path.Base(dl.URL)
+		localFileName = path.Base(dl)
 	}
 	fullPath := path.Join(*outDir, localFileName)
 	localFileInfo, err := os.Stat(fullPath)
 	if *forceRedownload {
-		v("forcing download of '%s'", dl.URL)
-		return dl.Download(fullPath)
+		v("forcing download of '%s'", dl)
+		return client.DownloadZone(dl, fullPath)
 	}
 	// check if local file already exists
 	if err == nil {
@@ -157,20 +160,20 @@ func zoneDownload(dl czds.DownloadLink) error {
 		if localFileInfo.Size() != info.ContentLength {
 			// size differs, redownload
 			v("size of local file (%d) differs from remote (%d), redownloading %s", localFileInfo.Size(), info.ContentLength, localFileName)
-			return dl.Download(fullPath)
+			return client.DownloadZone(dl, fullPath)
 		}
 		// check local file modification date
 		if localFileInfo.ModTime().Before(info.LastModified) {
 			// remote file is newer, redownload
 			v("remote file is newer than local, redownloading")
-			return dl.Download(fullPath)
+			return client.DownloadZone(dl, fullPath)
 		}
 		// local copy is good, skip download
 		v("local file '%s' matched remote, skipping", localFileName)
 	}
 	if os.IsNotExist(err) {
 		// file does not exist, download
-		return dl.Download(fullPath)
+		return client.DownloadZone(dl, fullPath)
 	}
 	return err
 }
