@@ -89,18 +89,40 @@ func (c *Client) httpClient() *http.Client {
 	return httpClient
 }
 
+func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
+	if auth {
+		err := c.checkAuth()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequest(method, url, request)
+	if err != nil {
+		return nil, err
+	}
+	if request != nil {
+		req.Header.Add("Content-Type", "application/json")
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return resp, fmt.Errorf("Error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
+	}
+
+	return resp, nil
+}
+
 func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
 	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
 }
 
 func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
-	if auth {
-		err := c.checkAuth()
-		if err != nil {
-			return err
-		}
-	}
-
 	var payloadReader io.Reader
 	if request != nil {
 		jsonPayload, err := json.Marshal(request)
@@ -109,24 +131,12 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 		}
 		payloadReader = bytes.NewReader(jsonPayload)
 	}
-	req, err := http.NewRequest(method, url, payloadReader)
-	if err != nil {
-		return err
-	}
-	if payloadReader != nil {
-		req.Header.Add("Content-Type", "application/json")
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
+
+	resp, err := c.apiRequest(auth, method, url, payloadReader)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
-	}
 
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {

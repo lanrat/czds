@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -18,24 +17,11 @@ type DownloadInfo struct {
 }
 
 func (c *Client) DownloadZone(url, destinationPath string) error {
-	err := c.checkAuth()
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
+	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error on downloadZone, got status %s %s", resp.Status, http.StatusText(resp.StatusCode))
-	}
 
 	// start the file download
 	file, err := os.Create(destinationPath)
@@ -56,24 +42,11 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 }
 
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
-	err := c.checkAuth()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
+	resp, err := c.apiRequest(true, "HEAD", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error on getZoneInfo, got Status %s (%s)", resp.Status, http.StatusText(resp.StatusCode))
-	}
 
 	lastModifiedStr := resp.Header.Get("Last-Modified")
 	if lastModifiedStr == "" {
