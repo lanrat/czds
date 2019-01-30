@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -16,7 +17,7 @@ const (
 	// AuthURL production url endpoint
 	AuthURL = "https://account-api.icann.org/api/authenticate"
 	// BaseURL production url endpoint
-	BaseURL = "https://czds-api.icann.org/"
+	BaseURL = "https://czds-api.icann.org"
 
 	// TestAuthURL testing url endpoint
 	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
@@ -88,19 +89,35 @@ func (c *Client) httpClient() *http.Client {
 	return httpClient
 }
 
-// Authenticate tests the client's credentials and gets an authentication token from the server
-// calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
-func (c *Client) Authenticate() error {
-	jsonCreds, err := json.Marshal(c.Creds)
+func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
+	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
+}
+
+func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
+	if auth {
+		err := c.checkAuth()
+		if err != nil {
+			return err
+		}
+	}
+
+	var payloadReader io.Reader
+	if request != nil {
+		jsonPayload, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		payloadReader = bytes.NewReader(jsonPayload)
+	}
+	req, err := http.NewRequest(method, url, payloadReader)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", c.AuthURL, bytes.NewReader(jsonCreds))
-	if err != nil {
-		return err
+	if payloadReader != nil {
+		req.Header.Add("Content-Type", "application/json")
 	}
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return err
@@ -108,18 +125,34 @@ func (c *Client) Authenticate() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error on getAccessToken, got Status %s %s", resp.Status, http.StatusText(resp.StatusCode))
+		return fmt.Errorf("Error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
 	}
 
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Authenticate tests the client's credentials and gets an authentication token from the server
+// calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
+func (c *Client) Authenticate() error {
+
 	authResp := authResponse{}
-	err = json.NewDecoder(resp.Body).Decode(&authResp)
+	err := c.jsonRequest(false, "POST", c.AuthURL, c.Creds, &authResp)
 	if err != nil {
 		return err
 	}
 	c.auth = authResp
 	c.authExp, err = authResp.getExpiration()
 
-	return err
+	if !c.authExp.After(time.Now()) {
+		return fmt.Errorf("Unable to authenticate")
+	}
+
+	return nil
 }
 
 func (ar *authResponse) getExpiration() (time.Time, error) {
