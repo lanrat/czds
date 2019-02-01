@@ -28,6 +28,8 @@ Usage of ./czds-dl:
         password to authenticate with
   -redownload
         force redownloading the zone even if it already exists on local disk with same size and modification date
+  -retries uint
+          max retry attempts per zone file download (default 3)
   -urlname
         use the filename from the url link as the saved filename instead of the file header
   -username string

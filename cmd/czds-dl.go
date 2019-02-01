@@ -22,7 +22,7 @@ var (
 	urlName         = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	forceRedownload = flag.Bool("redownload", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
 	verbose         = flag.Bool("verbose", false, "enable verbose logging")
-	retries         = flag.Uint("retries", 3, "mat retry attempts per zone file donwload")
+	retries         = flag.Uint("retries", 3, "max retry attempts per zone file download")
 
 	loadDone  = make(chan bool)
 	inputChan = make(chan *ZoneInfo, 100)
