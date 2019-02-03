@@ -6,7 +6,7 @@
 A utility and golang library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
 using both the documented and undocumented API endpoints
 
-Should allow you to perform almost any action you can in the web interface via this API
+Should allow you to perform almost any action you can in the web interface via [this API](https://godoc.org/github.com/lanrat/czds)
 
 ## CZDS-DL
 
