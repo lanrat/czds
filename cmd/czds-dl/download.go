@@ -138,7 +138,7 @@ func worker() {
 }
 
 func zoneDownload(dl string) error {
-	v("starting download '%s'", dl)
+	v("downloading '%s'", dl)
 	info, err := client.GetDownloadInfo(dl)
 	if err != nil {
 		return fmt.Errorf("%s [%s]", err, dl)

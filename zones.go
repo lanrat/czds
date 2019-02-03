@@ -16,6 +16,8 @@ type DownloadInfo struct {
 	Filename      string
 }
 
+// DownloadZone provided the zone download URL retrieved from GetLinks() downloads the zone file and
+// saves it to local disk at destinationPath
 func (c *Client) DownloadZone(url, destinationPath string) error {
 	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
@@ -41,6 +43,8 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 	return nil
 }
 
+// GetDownloadInfo Performs a HEAD request to the zone at url and populates a DownloadInfo struct
+// with the information returned by the headers
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	resp, err := c.apiRequest(true, "HEAD", url, nil)
 	if err != nil {

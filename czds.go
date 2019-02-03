@@ -66,7 +66,7 @@ type authResponse struct {
 	Message     string `json:"message"`
 }
 
-// this function dowa NOT make network requests if the auth is valid
+// this function does NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
 	// used a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
@@ -89,6 +89,7 @@ func (c *Client) httpClient() *http.Client {
 	return httpClient
 }
 
+// apiRequest makes a request to the client's API endpoint
 func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
 	if auth {
 		err := c.checkAuth()
@@ -118,10 +119,12 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	return resp, nil
 }
 
+// jsonAPI performes an authenticated json API request
 func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
 	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
 }
 
+// jsonRequest performes a request to the API endpoint sending and receiving JSON objects
 func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
 	var payloadReader io.Reader
 	if request != nil {
@@ -138,9 +141,11 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 	}
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return err
+	if response != nil {
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -165,6 +170,7 @@ func (c *Client) Authenticate() error {
 	return nil
 }
 
+// getExpiration returns the expiration of the authentication token
 func (ar *authResponse) getExpiration() (time.Time, error) {
 	token, err := jwt.DecodeJWT(ar.AccessToken)
 	exp := time.Unix(token.Data.Exp, 0)

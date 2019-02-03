@@ -1,15 +1,19 @@
-FROM golang:alpine
-
-RUN apk update && apk add --no-cache tzdata
+# build stage
+FROM golang:alpine AS czds-build-env
+RUN apk update && apk add --no-cache make
 
 WORKDIR /go/app/
 COPY . .
+RUN make
 
-ENV CGO_ENABLED=0
-RUN go build  -o /go/bin/czds-dl cmd/czds-dl.go
+
+# final stage
+FROM alpine
+RUN apk update && apk add --no-cache tzdata
+COPY --from=czds-build-env /go/app/bin/* /usr/local/bin/
 
 WORKDIR /zones
 RUN chown 1000:1000 $(pwd)
 USER 1000
 
-ENTRYPOINT [ "czds-dl" ]
+CMD [ "czds-dl" ]

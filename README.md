@@ -1,10 +1,20 @@
-# CZDS-DL
+# CZDS
 
-## Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
+[![Go Report Card](https://goreportcard.com/badge/github.com/lanrat/czds)](https://goreportcard.com/report/lanrat/czds)
+[![](https://godoc.org/github.com/lanrat/czds?status.svg)](https://godoc.org/github.com/lanrat/czds)
 
-Implements a client for the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+A utility and golang library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+using both the documented and undocumented API endpoints
 
-## Features
+Should allow you to perform almost any action you can in the web interface via this API
+
+## CZDS-DL
+
+Implements a client for the officially documented [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+
+### Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
+
+### Features
 
  * Can be used as a standalone client or as an API for another client
  * Automatically refreshes authorization token if expired during download
@@ -44,24 +54,24 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:52 requesting download links
 2019/01/12 16:23:54 received 5 zone links
 2019/01/12 16:23:54 starting 5 parallel downloads
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example2.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example4.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example1.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example3.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example5.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example2.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example4.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example1.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example3.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
-### Building
+## Building
 
+Just run make!
 Building from source requires go >= 1.11 for module support
 
 ```
 $ make
-go build -o czds-dl cmd/czds-dl.go
 ```
 
-### [Docker](https://hub.docker.com/r/lanrat/czds-dl/)
+## [Docker](https://hub.docker.com/r/lanrat/czds-dl/)
 
 ```
-docker run --rm -v /path/to/zones/:/zones lanrat/czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones lanrat/czds-dl czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
