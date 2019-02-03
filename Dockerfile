@@ -9,7 +9,7 @@ RUN make
 
 # final stage
 FROM alpine
-RUN apk update && apk add --no-cache tzdata
+RUN apk update && apk add --no-cache tzdata ca-certificates
 COPY --from=czds-build-env /go/app/bin/* /usr/local/bin/
 
 WORKDIR /zones
