@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"log"
 	"os"
@@ -72,7 +71,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// start the file download
 		file, err := os.Create(*outFile)
 		if err != nil {
 			log.Fatal(err)
@@ -88,9 +86,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func prettyPrint(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
-	return string(s)
 }

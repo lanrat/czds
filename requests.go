@@ -72,6 +72,7 @@ type Request struct {
 	Status      string    `json:"status"` // should be set to one of the Request* constants
 	Created     time.Time `json:"created"`
 	LastUpdated time.Time `json:"last_updated"`
+	Expired     time.Time `json:"expired"`
 	SFTP        bool      `json:"sftp"`
 }
 
@@ -112,6 +113,7 @@ type RequestsInfo struct {
 	RequestIP        string         `json:"requestIp"`
 	Reason           string         `json:"reason"`
 	LastUpdated      time.Time      `json:"last_updated"`
+	Expired          time.Time      `json:"expired"`
 	History          []HistoryEntry `json:"history"`
 	FtpDetails       *FtpDetails    `json:"ftpDetails"`
 	PrivateDataError bool           `json:"privateDataError"`
