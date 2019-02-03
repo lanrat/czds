@@ -143,7 +143,7 @@ func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) 
 }
 
 // GetRequestInfo gets detailed information about a particular request and its timeline
-// as seen on the CZDS dashboard page https://czds.icann.org/zone-requests/{ID}
+// as seen on the CZDS dashboard page "https://czds.icann.org/zone-requests/{ID}"
 func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
 	request := new(RequestsInfo)
 	err := c.jsonAPI("GET", "/czds/requests/"+requestID, nil, request)
@@ -158,7 +158,7 @@ func (c *Client) GetTLDStatus() ([]TLDStatus, error) {
 }
 
 // GetTerms gets the current terms and conditions from the CZDS portal
-// page https://czds.icann.org/terms-and-conditions
+// page "https://czds.icann.org/terms-and-conditions"
 // this is required to accept the terms and conditions when submitting a new request
 func (c *Client) GetTerms() (*Terms, error) {
 	terms := new(Terms)
