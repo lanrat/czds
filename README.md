@@ -61,6 +61,34 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
+## CZDS-REPORT
+
+Download the CSV report for current zone status
+
+### Usage
+```
+Usage of ./czds-report:
+  -authurl string
+        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
+  -baseurl string
+        base URL for CZDS service (default "https://czds-api.icann.org")
+  -file string
+        filename to save report to, '-' for stdout (default "report.csv")
+  -password string
+        password to authenticate with
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+```
+
+### Example
+```
+$ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file report.csv
+2019/02/02 17:43:37 Authenticating to https://account-api.icann.org/api/authenticate
+2019/02/02 17:43:38 Saving to report.csv
+```
+
 ## Building
 
 Just run make!
