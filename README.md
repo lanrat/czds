@@ -89,6 +89,67 @@ $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file repor
 2019/02/02 17:43:38 Saving to report.csv
 ```
 
+## CZDS-requests
+
+View information about current zone file requests
+
+### Usage
+
+By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
+Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
+
+```
+Usage of ./czds-requests:
+ -authurl string
+        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
+  -baseurl string
+        base URL for CZDS service (default "https://czds-api.icann.org")
+  -id string
+        ID of specific zone request to lookup, if none list of all are printed
+  -password string
+        password to authenticate with
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+  -zone string
+        same as -id, but looked up the request by zone name
+```
+
+### Example
+
+Show all requests: 
+```
+$ ./czds-requests -username "$USERNAME" -password "$PASSWORD" 
+TLD     ID      UnicodeTLD      Status  Created Updated Expires SFTP
+xn--mxtq1m	e59839f1-d69d-4970-9a15-7b49f3592065	政府	Approved	Wed Jan 30 08:00:42 2019	Wed Jan 30 08:53:41 2019	Sat Jan 12 08:53:41 2030	false
+aigo	c6886423-b67d-43b6-828f-9d5a6cb3e6a3	aigo	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+barclaycard	fa6d9c14-17ac-4b15-baf6-2d10g8e806fe	barclaycard	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+fans	977d8589-9cec-41ef-b62e-0d3f0cf863e0	fans	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+live	8c95ccae-ae4d-4028-8997-655b132f542d	live	Approved	Wed Jan 30 08:00:41 2019	Wed Jan 30 16:40:15 2019	Sat Jan 12 16:40:13 2030	false
+onyourside	259aa66b-ac77-43db-a09a-9d3f57cf0e6b	onyourside	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:02:16 2019		false
+wtc	67f5b31d-19f0-4071-a176-25ff71f509f7	wtc	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:02:55 2019		false
+xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08:00:41 2019	Wed Jan 30 10:55:03 2019	Tue Apr 30 10:55:03 2019	false
+```
+
+Lookup specific request details: 
+```
+$ ./czds-requests -username "$USERNAME" -password "$PASSWORD" -zone red
+ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
+TLD:    red (red)
+Status: approved
+Created:        Wed Jan 30 08:00:41 2019
+Updated:        Thu Jan 31 20:51:22 2019
+Expires:        Sun Jan 13 20:51:20 2030
+Request IP:     123.456.789.123
+FTP IPs:         []
+Reason: ...
+History:
+        Wed Jan 30 08:00:41 2019        Request submitted
+        Wed Jan 30 08:02:16 2019        Request status change to Pending
+        Thu Jan 31 20:51:22 2019        Request status change to Approved
+```
+
 ## Building
 
 Just run make!
