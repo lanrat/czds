@@ -225,16 +225,8 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	// check to see if any available to request
 	requestTLDs := make([]string, 0, 10)
 	for _, tld := range status {
-		if tld.CurrentStatus == StatusAvailable {
-			requestTLDs = append(requestTLDs, tld.TLD)
-		}
-		if tld.CurrentStatus == StatusExpired {
-			requestTLDs = append(requestTLDs, tld.TLD)
-		}
-		if tld.CurrentStatus == StatusDenied {
-			requestTLDs = append(requestTLDs, tld.TLD)
-		}
-		if tld.CurrentStatus == StatusRevoked {
+		switch tld.CurrentStatus {
+		case StatusAvailable, StatusExpired, StatusDenied, StatusRevoked:
 			requestTLDs = append(requestTLDs, tld.TLD)
 		}
 	}
