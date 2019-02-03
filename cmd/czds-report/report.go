@@ -13,8 +13,6 @@ var (
 	// flags
 	username = flag.String("username", "", "username to authenticate with")
 	password = flag.String("password", "", "password to authenticate with")
-	authURL  = flag.String("authurl", czds.AuthURL, "authenticate url for JWT token")
-	baseURL  = flag.String("baseurl", czds.BaseURL, "base URL for CZDS service")
 	outFile  = flag.String("file", "report.csv", "filename to save report to, '-' for stdout")
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 
@@ -47,14 +45,7 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
-	client = &czds.Client{
-		AuthURL: *authURL,
-		BaseURL: *baseURL,
-		Creds: czds.Credentials{
-			Username: *username,
-			Password: *password,
-		},
-	}
+	client = czds.NewClient(*username, *password)
 
 	// validate credentials
 	v("Authenticating to %s", client.AuthURL)

@@ -16,8 +16,6 @@ var (
 	username        = flag.String("username", "", "username to authenticate with")
 	password        = flag.String("password", "", "password to authenticate with")
 	parallel        = flag.Uint("parallel", 5, "number of zones to download in parallel")
-	authURL         = flag.String("authurl", czds.AuthURL, "authenticate url for JWT token")
-	baseURL         = flag.String("baseurl", czds.BaseURL, "base URL for CZDS service")
 	outDir          = flag.String("out", ".", "path to save downloaded zones to")
 	urlName         = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	forceRedownload = flag.Bool("redownload", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
@@ -59,14 +57,7 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
-	client = &czds.Client{
-		AuthURL: *authURL,
-		BaseURL: *baseURL,
-		Creds: czds.Credentials{
-			Username: *username,
-			Password: *password,
-		},
-	}
+	client = czds.NewClient(*username, *password)
 
 	// validate credentials
 	v("Authenticating to %s", client.AuthURL)

@@ -26,10 +26,6 @@ Implements a client for the officially documented [CZDS REST API](https://github
 ### Usage
 ```
 Usage of ./czds-dl:
-  -authurl string
-        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
-  -baseurl string
-        base URL for CZDS service (default "https://czds-api.icann.org/")
   -out string
         path to save downloaded zones to (default ".")
   -parallel uint
@@ -68,10 +64,6 @@ Download the CSV report for current zone status
 ### Usage
 ```
 Usage of ./czds-report:
-  -authurl string
-        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
-  -baseurl string
-        base URL for CZDS service (default "https://czds-api.icann.org")
   -file string
         filename to save report to, '-' for stdout (default "report.csv")
   -password string
@@ -89,7 +81,7 @@ $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file repor
 2019/02/02 17:43:38 Saving to report.csv
 ```
 
-## CZDS-requests
+## CZDS-REQUESTS
 
 View information about current zone file requests
 
@@ -100,10 +92,6 @@ Detailed information about a particular zone can be displayed with the `-zone` o
 
 ```
 Usage of ./czds-requests:
- -authurl string
-        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
-  -baseurl string
-        base URL for CZDS service (default "https://czds-api.icann.org")
   -id string
         ID of specific zone request to lookup, if none list of all are printed
   -password string

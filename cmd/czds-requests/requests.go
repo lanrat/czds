@@ -15,8 +15,6 @@ var (
 	// flags
 	username = flag.String("username", "", "username to authenticate with")
 	password = flag.String("password", "", "password to authenticate with")
-	authURL  = flag.String("authurl", czds.AuthURL, "authenticate url for JWT token")
-	baseURL  = flag.String("baseurl", czds.BaseURL, "base URL for CZDS service")
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 	id       = flag.String("id", "", "ID of specific zone request to lookup, if none list of all are printed")
 	zone     = flag.String("zone", "", "same as -id, but looked up the request by zone name")
@@ -54,14 +52,7 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
-	client = &czds.Client{
-		AuthURL: *authURL,
-		BaseURL: *baseURL,
-		Creds: czds.Credentials{
-			Username: *username,
-			Password: *password,
-		},
-	}
+	client = czds.NewClient(*username, *password)
 
 	// validate credentials
 	v("Authenticating to %s", client.AuthURL)

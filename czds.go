@@ -66,6 +66,19 @@ type authResponse struct {
 	Message     string `json:"message"`
 }
 
+// NewClient returns a new instance of the CZDS Client with the default production URLs
+func NewClient(username, password string) *Client {
+	client := &Client{
+		AuthURL: AuthURL,
+		BaseURL: BaseURL,
+		Creds: Credentials{
+			Username: username,
+			Password: password,
+		},
+	}
+	return client
+}
+
 // this function does NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
 	// used a mutex to prevent multiple threads from authenticating at the same time
