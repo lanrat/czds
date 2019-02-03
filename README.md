@@ -81,7 +81,7 @@ $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file repor
 2019/02/02 17:43:38 Saving to report.csv
 ```
 
-## CZDS-REQUESTS
+## CZDS-STATUS
 
 View information about current zone file requests
 
@@ -91,7 +91,7 @@ By default czds-requests prints high-level information about all czds requests, 
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```
-Usage of ./czds-requests:
+Usage of ./czds-status:
   -id string
         ID of specific zone request to lookup, if none list of all are printed
   -password string
@@ -108,7 +108,7 @@ Usage of ./czds-requests:
 
 Show all requests: 
 ```
-$ ./czds-requests -username "$USERNAME" -password "$PASSWORD" 
+$ ./czds-status -username "$USERNAME" -password "$PASSWORD" 
 TLD     ID      UnicodeTLD      Status  Created Updated Expires SFTP
 xn--mxtq1m	e59839f1-d69d-4970-9a15-7b49f3592065	政府	Approved	Wed Jan 30 08:00:42 2019	Wed Jan 30 08:53:41 2019	Sat Jan 12 08:53:41 2030	false
 aigo	c6886423-b67d-43b6-828f-9d5a6cb3e6a3	aigo	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
@@ -122,7 +122,7 @@ xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08
 
 Lookup specific request details: 
 ```
-$ ./czds-requests -username "$USERNAME" -password "$PASSWORD" -zone red
+$ ./czds-status -username "$USERNAME" -password "$PASSWORD" -zone red
 ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
 TLD:    red (red)
 Status: approved
