@@ -189,8 +189,8 @@ Building from source requires go >= 1.11 for module support
 $ make
 ```
 
-## [Docker](https://hub.docker.com/r/lanrat/czds-dl/)
+## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
 ```
-docker run --rm -v /path/to/zones/:/zones lanrat/czds-dl czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones lanrat/czds czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
