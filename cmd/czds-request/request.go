@@ -105,7 +105,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		v("Requested: %v", requestedTLDs)
+		if len(requestedTLDs) > 0 {
+			fmt.Printf("Requested: %v\n", requestedTLDs)
+		}
 	}
 }
 
