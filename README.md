@@ -59,7 +59,7 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 
 ## CZDS-REPORT
 
-Download the CSV report for current zone status
+Download the CSV report for current zone status.
 
 ### Usage
 ```
@@ -79,6 +79,48 @@ Usage of ./czds-report:
 $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file report.csv
 2019/02/02 17:43:37 Authenticating to https://account-api.icann.org/api/authenticate
 2019/02/02 17:43:38 Saving to report.csv
+```
+
+## CZDS-REQUEST
+
+Submit a new zone request to CZDS. Be sure to view and accept the terms and conditions with the `-terms` flag.
+
+### Usage
+```
+Usage of ./czds-request:
+  -password string
+        password to authenticate with
+  -reason string
+        reason to request zone access
+  -request string
+        comma separated list of TLDs to request
+  -request-all
+        request all available TLDs
+  -status
+        print status of TLDS
+  -terms
+        print CZDS Terms & Conditions
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+```
+
+### Example
+View zones able to be requested
+
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
+```
+
+Request access to new zones
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
+```
+
+Request access to all zones
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
 ```
 
 ## CZDS-STATUS
