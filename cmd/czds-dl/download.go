@@ -20,12 +20,19 @@ var (
 	urlName         = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	forceRedownload = flag.Bool("redownload", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
 	verbose         = flag.Bool("verbose", false, "enable verbose logging")
+	retries         = flag.Uint("retries", 3, "max retry attempts per zone file download")
 
 	loadDone  = make(chan bool)
-	inputChan = make(chan string, 100)
+	inputChan = make(chan *ZoneInfo, 100)
 	work      sync.WaitGroup
 	client    *czds.Client
 )
+
+type ZoneInfo struct {
+	Dl       string
+	FullPath string
+	Count    int
+}
 
 func v(format string, v ...interface{}) {
 	if *verbose {
@@ -103,22 +110,32 @@ func main() {
 func addLinks(downloads []string) {
 	for _, dl := range downloads {
 		work.Add(1)
-		inputChan <- dl
-	}
-	close(inputChan)
+		inputChan <- &ZoneInfo{
+			Dl:    dl,
+			Count: 1,
+		}
+	}	
 	loadDone <- true
 }
 
 func worker() {
 	for {
-		dl, more := <-inputChan
+		zi, more := <-inputChan
 		if more {
 			// do work
-			err := zoneDownload(dl)
+			err := zoneDownload(zi)
 			if err != nil {
 				// don't stop on an error that only affects a single zone
 				// fixes occasional HTTP 500s from CZDS
-				log.Print(err)
+				v("[%s] err: %s", path.Base(zi.Dl), err)
+				zi.Count++
+				if uint(zi.Count) < *retries {
+					work.Add(1)
+					inputChan <- zi // requeue
+				} else {
+					log.Printf("[%s] Max fail count hit; not downloading.", path.Base(zi.Dl))
+					_ = os.Remove(zi.FullPath)
+				}
 			}
 			work.Done()
 		} else {
@@ -128,22 +145,22 @@ func worker() {
 	}
 }
 
-func zoneDownload(dl string) error {
-	v("downloading '%s'", dl)
-	info, err := client.GetDownloadInfo(dl)
+func zoneDownload(zi *ZoneInfo) error {
+	v("starting download '%s'", zi.Dl)
+	info, err := client.GetDownloadInfo(zi.Dl)
 	if err != nil {
-		return fmt.Errorf("%s [%s]", err, dl)
+		return fmt.Errorf("%s [%s]", err, zi.Dl)
 	}
 	// use filename from url or header?
 	localFileName := info.Filename
 	if *urlName {
-		localFileName = path.Base(dl)
+		localFileName = path.Base(zi.Dl)
 	}
-	fullPath := path.Join(*outDir, localFileName)
-	localFileInfo, err := os.Stat(fullPath)
+	zi.FullPath = path.Join(*outDir, localFileName)
+	localFileInfo, err := os.Stat(zi.FullPath)
 	if *forceRedownload {
-		v("forcing download of '%s'", dl)
-		return client.DownloadZone(dl, fullPath)
+		v("forcing download of '%s'", zi.Dl)
+		return client.DownloadZone(zi.Dl, zi.FullPath)
 	}
 	// check if local file already exists
 	if err == nil {
@@ -151,20 +168,20 @@ func zoneDownload(dl string) error {
 		if localFileInfo.Size() != info.ContentLength {
 			// size differs, redownload
 			v("size of local file (%d) differs from remote (%d), redownloading %s", localFileInfo.Size(), info.ContentLength, localFileName)
-			return client.DownloadZone(dl, fullPath)
+			return client.DownloadZone(zi.Dl, zi.FullPath)
 		}
 		// check local file modification date
 		if localFileInfo.ModTime().Before(info.LastModified) {
 			// remote file is newer, redownload
 			v("remote file is newer than local, redownloading")
-			return client.DownloadZone(dl, fullPath)
+			return client.DownloadZone(zi.Dl, zi.FullPath)
 		}
 		// local copy is good, skip download
 		v("local file '%s' matched remote, skipping", localFileName)
 	}
 	if os.IsNotExist(err) {
 		// file does not exist, download
-		return client.DownloadZone(dl, fullPath)
+		return client.DownloadZone(zi.Dl, zi.FullPath)
 	}
 	return err
 }
