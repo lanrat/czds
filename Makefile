@@ -13,13 +13,16 @@ CMD_TARGETS = $(@:%=bin/%)
 all: $(BINS)
 
 .SECONDEXPANSION:
-$(BINS): $$(BIN_SOURCES) $(MODULE_SOURCES) go.mod
+$(BINS): deps $$(BIN_SOURCES) $(MODULE_SOURCES)
 	$(CC) -o $@ $(BIN_SOURCES)
 
 $(CMDS): $$(CMD_TARGETS)
 
 docker: Dockerfile $(SOURCES)
 	docker build -t lanrat/czds .
+
+deps: go.mod
+	go mod download
 
 fmt:
 	gofmt -s -w -l .
