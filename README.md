@@ -1,10 +1,20 @@
-# CZDS-DL
+# CZDS
 
-## Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
+[![Go Report Card](https://goreportcard.com/badge/github.com/lanrat/czds)](https://goreportcard.com/report/lanrat/czds)
+[![](https://godoc.org/github.com/lanrat/czds?status.svg)](https://godoc.org/github.com/lanrat/czds)
 
-Implements a client for the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+A utility and golang library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+using both the documented and undocumented API endpoints
 
-## Features
+Should allow you to perform almost any action you can in the web interface via [this API](https://godoc.org/github.com/lanrat/czds)
+
+## CZDS-DL
+
+Implements a client for the officially documented [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+
+### Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
+
+### Features
 
  * Can be used as a standalone client or as an API for another client
  * Automatically refreshes authorization token if expired during download
@@ -16,10 +26,6 @@ Implements a client for the [CZDS REST API](https://github.com/icann/czds-api-cl
 ### Usage
 ```
 Usage of ./czds-dl:
-  -authurl string
-        authenticate url for JWT token (default "https://account-api.icann.org/api/authenticate")
-  -baseurl string
-        base URL for CZDS service (default "https://czds-api.icann.org/")
   -out string
         path to save downloaded zones to (default ".")
   -parallel uint
@@ -44,24 +50,147 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:52 requesting download links
 2019/01/12 16:23:54 received 5 zone links
 2019/01/12 16:23:54 starting 5 parallel downloads
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example2.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example4.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example1.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example3.zone'
-2019/01/12 16:23:54 starting download 'https://czds-api.icann.org/czds/downloads/example5.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example2.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example4.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example1.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example3.zone'
+2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
-### Building
+## CZDS-REPORT
 
+Download the CSV report for current zone status.
+
+### Usage
+```
+Usage of ./czds-report:
+  -file string
+        filename to save report to, '-' for stdout (default "report.csv")
+  -password string
+        password to authenticate with
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+```
+
+### Example
+```
+$ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file report.csv
+2019/02/02 17:43:37 Authenticating to https://account-api.icann.org/api/authenticate
+2019/02/02 17:43:38 Saving to report.csv
+```
+
+## CZDS-REQUEST
+
+Submit a new zone request to CZDS. Be sure to view and accept the terms and conditions with the `-terms` flag.
+
+### Usage
+```
+Usage of ./czds-request:
+  -password string
+        password to authenticate with
+  -reason string
+        reason to request zone access
+  -request string
+        comma separated list of TLDs to request
+  -request-all
+        request all available TLDs
+  -status
+        print status of TLDS
+  -terms
+        print CZDS Terms & Conditions
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+```
+
+### Example
+View zones able to be requested
+
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
+```
+
+Request access to new zones
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
+```
+
+Request access to all zones
+```
+$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
+```
+
+## CZDS-STATUS
+
+View information about current zone file requests
+
+### Usage
+
+By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
+Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
+
+```
+Usage of ./czds-status:
+  -id string
+        ID of specific zone request to lookup, if none list of all are printed
+  -password string
+        password to authenticate with
+  -username string
+        username to authenticate with
+  -verbose
+        enable verbose logging
+  -zone string
+        same as -id, but looked up the request by zone name
+```
+
+### Example
+
+Show all requests: 
+```
+$ ./czds-status -username "$USERNAME" -password "$PASSWORD" 
+TLD     ID      UnicodeTLD      Status  Created Updated Expires SFTP
+xn--mxtq1m	e59839f1-d69d-4970-9a15-7b49f3592065	政府	Approved	Wed Jan 30 08:00:42 2019	Wed Jan 30 08:53:41 2019	Sat Jan 12 08:53:41 2030	false
+aigo	c6886423-b67d-43b6-828f-9d5a6cb3e6a3	aigo	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+barclaycard	fa6d9c14-17ac-4b15-baf6-2d10g8e806fe	barclaycard	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+fans	977d8589-9cec-41ef-b62e-0d3f0cf863e0	fans	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
+live	8c95ccae-ae4d-4028-8997-655b132f542d	live	Approved	Wed Jan 30 08:00:41 2019	Wed Jan 30 16:40:15 2019	Sat Jan 12 16:40:13 2030	false
+onyourside	259aa66b-ac77-43db-a09a-9d3f57cf0e6b	onyourside	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:02:16 2019		false
+wtc	67f5b31d-19f0-4071-a176-25ff71f509f7	wtc	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:02:55 2019		false
+xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08:00:41 2019	Wed Jan 30 10:55:03 2019	Tue Apr 30 10:55:03 2019	false
+```
+
+Lookup specific request details: 
+```
+$ ./czds-status -username "$USERNAME" -password "$PASSWORD" -zone red
+ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
+TLD:    red (red)
+Status: approved
+Created:        Wed Jan 30 08:00:41 2019
+Updated:        Thu Jan 31 20:51:22 2019
+Expires:        Sun Jan 13 20:51:20 2030
+Request IP:     123.456.789.123
+FTP IPs:         []
+Reason: ...
+History:
+        Wed Jan 30 08:00:41 2019        Request submitted
+        Wed Jan 30 08:02:16 2019        Request status change to Pending
+        Thu Jan 31 20:51:22 2019        Request status change to Approved
+```
+
+## Building
+
+Just run make!
 Building from source requires go >= 1.11 for module support
 
 ```
 $ make
-go build -o czds-dl cmd/czds-dl.go
 ```
 
-### [Docker](https://hub.docker.com/r/lanrat/czds-dl/)
+## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
 ```
-docker run --rm -v /path/to/zones/:/zones lanrat/czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones lanrat/czds czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```

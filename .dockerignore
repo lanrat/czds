@@ -1,8 +1,7 @@
 .git
 .gitignore
-czds-dl
+bin/
 Dockerfile
 LICENSE
-Makefile
 README.md
 go.sum
