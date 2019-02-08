@@ -8,7 +8,7 @@ CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
 
-.PHONY: all fmt docker clean install $(CMDS)
+.PHONY: all fmt docker clean install deps $(CMDS)
 
 all: $(BINS)
 
