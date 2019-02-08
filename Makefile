@@ -8,18 +8,21 @@ CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
 
-.PHONY: all fmt docker clean install $(CMDS)
+.PHONY: all fmt docker clean install deps $(CMDS)
 
 all: $(BINS)
 
 .SECONDEXPANSION:
-$(BINS): $$(BIN_SOURCES) $(MODULE_SOURCES) go.mod
+$(BINS): deps $$(BIN_SOURCES) $(MODULE_SOURCES)
 	$(CC) -o $@ $(BIN_SOURCES)
 
 $(CMDS): $$(CMD_TARGETS)
 
 docker: Dockerfile $(SOURCES)
 	docker build -t lanrat/czds .
+
+deps: go.mod
+	go mod download
 
 fmt:
 	gofmt -s -w -l .

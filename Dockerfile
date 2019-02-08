@@ -4,7 +4,7 @@ RUN apk update && apk add --no-cache make
 
 WORKDIR /go/app/
 COPY . .
-RUN make
+RUN make -j $(nproc)
 
 
 # final stage
