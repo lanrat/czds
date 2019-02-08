@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime"
 	"net"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -20,7 +17,7 @@ const (
 	// AuthURL production url endpoint
 	AuthURL = "https://account-api.icann.org/api/authenticate"
 	// BaseURL production url endpoint
-	BaseURL = "https://czds-api.icann.org/"
+	BaseURL = "https://czds-api.icann.org"
 
 	// TestAuthURL testing url endpoint
 	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
@@ -69,14 +66,20 @@ type authResponse struct {
 	Message     string `json:"message"`
 }
 
-// DownloadInfo information from the HEAD request from a DownloadLink
-type DownloadInfo struct {
-	ContentLength int64
-	LastModified  time.Time
-	Filename      string
+// NewClient returns a new instance of the CZDS Client with the default production URLs
+func NewClient(username, password string) *Client {
+	client := &Client{
+		AuthURL: AuthURL,
+		BaseURL: BaseURL,
+		Creds: Credentials{
+			Username: username,
+			Password: password,
+		},
+	}
+	return client
 }
 
-// this function dowa NOT make network requests if the auth is valid
+// this function does NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
 	// used a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
@@ -99,168 +102,88 @@ func (c *Client) httpClient() *http.Client {
 	return httpClient
 }
 
-func (c *Client) DownloadZone(url, destinationPath string) error {
-	err := c.checkAuth()
-	if err != nil {
-		return err
+// apiRequest makes a request to the client's API endpoint
+func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
+	if auth {
+		err := c.checkAuth()
+		if err != nil {
+			return nil, err
+		}
 	}
-	req, err := http.NewRequest("GET", url, nil)
+
+	req, err := http.NewRequest(method, url, request)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	if request != nil {
+		req.Header.Add("Content-Type", "application/json")
+	}
+	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return resp, fmt.Errorf("Error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
+	}
+
+	return resp, nil
+}
+
+// jsonAPI performes an authenticated json API request
+func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
+	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
+}
+
+// jsonRequest performes a request to the API endpoint sending and receiving JSON objects
+func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
+	var payloadReader io.Reader
+	if request != nil {
+		jsonPayload, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		payloadReader = bytes.NewReader(jsonPayload)
+	}
+
+	resp, err := c.apiRequest(auth, method, url, payloadReader)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error on downloadZone, got status %s %s", resp.Status, http.StatusText(resp.StatusCode))
-	}
-
-	// start the file download
-	file, err := os.Create(destinationPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	n, err := io.Copy(file, resp.Body)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("%s was empty", destinationPath)
+	if response != nil {
+		err = json.NewDecoder(resp.Body).Decode(&response)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
-	err := c.checkAuth()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error on getZoneInfo, got Status %s (%s)", resp.Status, http.StatusText(resp.StatusCode))
-	}
-
-	lastModifiedStr := resp.Header.Get("Last-Modified")
-	if lastModifiedStr == "" {
-		return nil, fmt.Errorf("HEAD request to %s missing 'Last-Modified' header", url)
-	}
-	lastModifiedTime, err := time.Parse(time.RFC1123, lastModifiedStr)
-	if err != nil {
-		return nil, err
-	}
-
-	contentLengthStr := resp.Header.Get("Content-Length")
-	if contentLengthStr == "" {
-		return nil, fmt.Errorf("HEAD request to %s missing 'Content-Length' header", url)
-	}
-	contentLength, err := strconv.ParseInt(contentLengthStr, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	contentDisposition := resp.Header.Get("Content-Disposition")
-	_, params, err := mime.ParseMediaType(contentDisposition)
-	if err != nil {
-		return nil, err
-	}
-	/*if params["filename"] == "" {
-		return nil, fmt.Errorf("no filename set in Content-Disposition for %s", url)
-	}*/
-
-	info := &DownloadInfo{
-		LastModified:  lastModifiedTime,
-		ContentLength: contentLength,
-		Filename:      params["filename"],
-	}
-	return info, nil
-}
-
-// GetLinks returns the DownloadLinks available to the authenticated user
-func (c *Client) GetLinks() ([]string, error) {
-	err := c.checkAuth()
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("GET", c.BaseURL+"/czds/downloads/links", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error on getAccessToken, got Status %s %s", resp.Status, http.StatusText(resp.StatusCode))
-	}
-	links := make([]string, 0, 10)
-	err = json.NewDecoder(resp.Body).Decode(&links)
-	if err != nil {
-		return nil, err
-	}
-	dLinks := make([]string, 0, len(links))
-	for _, url := range links {
-		dLinks = append(dLinks, url)
-	}
-
-	return dLinks, nil
-}
-
 // Authenticate tests the client's credentials and gets an authentication token from the server
 // calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
 func (c *Client) Authenticate() error {
-	jsonCreds, err := json.Marshal(c.Creds)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", c.AuthURL, bytes.NewReader(jsonCreds))
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	resp, err := c.httpClient().Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Error on getAccessToken, got Status %s %s", resp.Status, http.StatusText(resp.StatusCode))
-	}
 
 	authResp := authResponse{}
-	err = json.NewDecoder(resp.Body).Decode(&authResp)
+	err := c.jsonRequest(false, "POST", c.AuthURL, c.Creds, &authResp)
 	if err != nil {
 		return err
 	}
 	c.auth = authResp
 	c.authExp, err = authResp.getExpiration()
 
-	return err
+	if !c.authExp.After(time.Now()) {
+		return fmt.Errorf("Unable to authenticate")
+	}
+
+	return nil
 }
 
+// getExpiration returns the expiration of the authentication token
 func (ar *authResponse) getExpiration() (time.Time, error) {
 	token, err := jwt.DecodeJWT(ar.AccessToken)
 	exp := time.Unix(token.Data.Exp, 0)
