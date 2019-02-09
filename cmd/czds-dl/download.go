@@ -134,7 +134,11 @@ func worker() {
 					inputChan <- zi // requeue
 				} else {
 					log.Printf("[%s] Max fail count hit; not downloading.", path.Base(zi.Dl))
-					_ = os.Remove(zi.FullPath)
+					err = os.Remove(zi.FullPath)
+					if err != {
+						// log but continue; not fatal
+						log.Printf("[%s] %s", zi.Dl, err)
+					}
 				}
 			}
 			work.Done()
