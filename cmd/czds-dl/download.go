@@ -24,6 +24,7 @@ var (
 
 	loadDone  = make(chan bool)
 	inputChan = make(chan *ZoneInfo, 100)
+	retryChan = make(chan *ZoneInfo, *parallel)
 	work      sync.WaitGroup
 	client    *czds.Client
 )
@@ -112,39 +113,51 @@ func addLinks(downloads []string) {
 		work.Add(1)
 		inputChan <- &ZoneInfo{
 			Dl:    dl,
-			Count: 1,
+			Count: 0,
 		}
-	}	
+	}
+	close(inputChan)
 	loadDone <- true
+}
+
+func doWork(zi *ZoneInfo) {
+	err := zoneDownload(zi)
+	if err != nil {
+		// don't stop on an error that only affects a single zone
+		// fixes occasional HTTP 500s from CZDS
+		v("[%s] err: %s", path.Base(zi.Dl), err)
+		zi.Count++
+		if uint(zi.Count) <= *retries {
+			work.Add(1)
+			retryChan <- zi // requeue
+		} else {
+			log.Printf("[%s] Max fail count hit; not downloading.", path.Base(zi.Dl))
+			err = os.Remove(zi.FullPath)
+			if err != nil {
+				// log but continue; not fatal
+				log.Printf("[%s] %s", zi.Dl, err)
+			}
+		}
+	}
+	work.Done()
 }
 
 func worker() {
 	for {
-		zi, more := <-inputChan
-		if more {
-			// do work
-			err := zoneDownload(zi)
-			if err != nil {
-				// don't stop on an error that only affects a single zone
-				// fixes occasional HTTP 500s from CZDS
-				v("[%s] err: %s", path.Base(zi.Dl), err)
-				zi.Count++
-				if uint(zi.Count) < *retries {
-					work.Add(1)
-					inputChan <- zi // requeue
-				} else {
-					log.Printf("[%s] Max fail count hit; not downloading.", path.Base(zi.Dl))
-					err = os.Remove(zi.FullPath)
-					if err != {
-						// log but continue; not fatal
-						log.Printf("[%s] %s", zi.Dl, err)
-					}
-				}
+		select {
+		case zi, more := <-inputChan:
+			if more {
+				doWork(zi)
+			} else {
+				return
 			}
-			work.Done()
-		} else {
-			// done
-			return
+		case zi, more := <-retryChan:
+			if more {
+				v("[%s] retry count %d of %d", path.Base(zi.Dl), zi.Count, *retries)
+				doWork(zi)
+			} else {
+				return
+			}
 		}
 	}
 }
