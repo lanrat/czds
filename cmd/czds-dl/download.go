@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/lanrat/czds"
 )
@@ -88,6 +90,9 @@ func main() {
 	}
 	v("received %d zone links", len(downloads))
 
+	// shuffle download links to better distribue load on CZDS
+	downloads = shuffle(downloads)
+
 	// start workers
 	go addLinks(downloads)
 	v("starting %d parallel downloads", *parallel)
@@ -167,4 +172,15 @@ func zoneDownload(dl string) error {
 		return client.DownloadZone(dl, fullPath)
 	}
 	return err
+}
+
+func shuffle(src []string) []string {
+	final := make([]string, len(src))
+	rand.Seed(time.Now().UTC().UnixNano())
+	perm := rand.Perm(len(src))
+
+	for i, v := range perm {
+		final[v] = src[i]
+	}
+	return final
 }
