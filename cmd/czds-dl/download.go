@@ -114,7 +114,7 @@ func addLinks(downloads []string) {
 			Dl:    dl,
 			Count: 1,
 		}
-	}	
+	}
 	loadDone <- true
 }
 
@@ -131,13 +131,18 @@ func worker() {
 				zi.Count++
 				if uint(zi.Count) < *retries {
 					work.Add(1)
-					inputChan <- zi // requeue
+					// requeue in another goroutine to prevent blocking
+					go func() {
+						inputChan <- zi
+					}()
 				} else {
 					log.Printf("[%s] Max fail count hit; not downloading.", path.Base(zi.Dl))
-					err = os.Remove(zi.FullPath)
-					if err != {
-						// log but continue; not fatal
-						log.Printf("[%s] %s", zi.Dl, err)
+					if _, err := os.Stat(zi.FullPath); !os.IsNotExist(err) {
+						err = os.Remove(zi.FullPath)
+						if err != nil {
+							// log but continue; not fatal
+							log.Printf("[%s] %s", zi.Dl, err)
+						}
 					}
 				}
 			}
@@ -150,7 +155,7 @@ func worker() {
 }
 
 func zoneDownload(zi *ZoneInfo) error {
-	v("starting download '%s'", zi.Dl)
+	v("downloading '%s'", zi.Dl)
 	info, err := client.GetDownloadInfo(zi.Dl)
 	if err != nil {
 		return fmt.Errorf("%s [%s]", err, zi.Dl)
