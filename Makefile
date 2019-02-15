@@ -13,7 +13,7 @@ CMD_TARGETS = $(@:%=bin/%)
 all: $(BINS)
 
 .SECONDEXPANSION:
-$(BINS): deps $$(BIN_SOURCES) $(MODULE_SOURCES)
+$(BINS): $$(BIN_SOURCES) $(MODULE_SOURCES)
 	$(CC) -o $@ $(BIN_SOURCES)
 
 $(CMDS): $$(CMD_TARGETS)
