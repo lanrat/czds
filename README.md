@@ -1,7 +1,9 @@
 # CZDS
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/lanrat/czds)](https://goreportcard.com/report/lanrat/czds)
-[![](https://godoc.org/github.com/lanrat/czds?status.svg)](https://godoc.org/github.com/lanrat/czds)
+[![GoDoc](https://godoc.org/github.com/lanrat/czds?status.svg)](https://godoc.org/github.com/lanrat/czds)
+[![Docker Automated Build](https://img.shields.io/docker/cloud/automated/lanrat/czds.svg)](https://hub.docker.com/r/lanrat/czds)
+[![Docker Build Status](https://img.shields.io/docker/cloud/build/lanrat/czds.svg)](https://hub.docker.com/r/lanrat/czds)
 
 A utility and golang library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
 using both the documented and undocumented API endpoints
