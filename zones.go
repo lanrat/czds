@@ -17,29 +17,37 @@ type DownloadInfo struct {
 }
 
 // DownloadZoneToWriter is analogus to DownloadZone but instead of writing it to a file, it will
-// write it to a provided io.Writer.
-func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) error {
-        resp, err := c.apiRequest(true, "GET", url, nil)
-        if err != nil {
-                return err
-        }
-        defer resp.Body.Close()
+// write it to a provided io.Writer. It returns the number of bytes written to dest and any error
+// that was encountered.
+func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
+	resp, err := c.apiRequest(true, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-        _, err = io.Copy(dest, resp.Body)
-        return err
+	return io.Copy(dest, resp.Body)
 }
 
 // DownloadZone provided the zone download URL retrieved from GetLinks() downloads the zone file and
 // saves it to local disk at destinationPath
 func (c *Client) DownloadZone(url, destinationPath string) error {
-        // start the file download
-        file, err := os.Create(destinationPath)
-        if err != nil {
-                return err
-        }
-        defer file.Close()
+	// start the file download
+	file, err := os.Create(destinationPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-        return c.DownloadZoneToWriter(url, file)
+	n, err := c.DownloadZoneToWriter(url, file)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("%s was empty", destinationPath)
+	}
+
+	return nil
 }
 
 // GetDownloadInfo Performs a HEAD request to the zone at url and populates a DownloadInfo struct
