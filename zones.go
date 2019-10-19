@@ -22,7 +22,7 @@ type DownloadInfo struct {
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
 	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
 
