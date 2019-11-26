@@ -4,4 +4,3 @@ bin/
 Dockerfile
 LICENSE
 README.md
-go.sum
