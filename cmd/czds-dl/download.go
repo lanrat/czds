@@ -15,22 +15,23 @@ import (
 
 var (
 	// flags
-	username        = flag.String("username", "", "username to authenticate with")
-	password        = flag.String("password", "", "password to authenticate with")
-	parallel        = flag.Uint("parallel", 5, "number of zones to download in parallel")
-	outDir          = flag.String("out", ".", "path to save downloaded zones to")
-	urlName         = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
-	forceRedownload = flag.Bool("redownload", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
-	verbose         = flag.Bool("verbose", false, "enable verbose logging")
-	retries         = flag.Uint("retries", 3, "max retry attempts per zone file download")
+	username   = flag.String("username", "", "username to authenticate with")
+	password   = flag.String("password", "", "password to authenticate with")
+	parallel   = flag.Uint("parallel", 5, "number of zones to download in parallel")
+	outDir     = flag.String("out", ".", "path to save downloaded zones to")
+	urlName    = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
+	force      = flag.Bool("force", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
+	redownload = flag.Bool("redownload", false, "redownload zones that are newer on the remote server than local copy")
+	verbose    = flag.Bool("verbose", false, "enable verbose logging")
+	retries    = flag.Uint("retries", 3, "max retry attempts per zone file download")
 
 	loadDone  = make(chan bool)
-	inputChan = make(chan *ZoneInfo, 100)
+	inputChan = make(chan *zoneInfo, 100)
 	work      sync.WaitGroup
 	client    *czds.Client
 )
 
-type ZoneInfo struct {
+type zoneInfo struct {
 	Dl       string
 	FullPath string
 	Count    int
@@ -97,7 +98,7 @@ func main() {
 	}
 	v("received %d zone links", len(downloads))
 
-	// shuffle download links to better distribue load on CZDS
+	// shuffle download links to better distribute load on CZDS
 	downloads = shuffle(downloads)
 
 	// start workers
@@ -115,7 +116,7 @@ func main() {
 func addLinks(downloads []string) {
 	for _, dl := range downloads {
 		work.Add(1)
-		inputChan <- &ZoneInfo{
+		inputChan <- &zoneInfo{
 			Dl:    dl,
 			Count: 1,
 		}
@@ -159,7 +160,7 @@ func worker() {
 	}
 }
 
-func zoneDownload(zi *ZoneInfo) error {
+func zoneDownload(zi *zoneInfo) error {
 	v("downloading '%s'", zi.Dl)
 	info, err := client.GetDownloadInfo(zi.Dl)
 	if err != nil {
@@ -172,12 +173,12 @@ func zoneDownload(zi *ZoneInfo) error {
 	}
 	zi.FullPath = path.Join(*outDir, localFileName)
 	localFileInfo, err := os.Stat(zi.FullPath)
-	if *forceRedownload {
+	if *force {
 		v("forcing download of '%s'", zi.Dl)
 		return client.DownloadZone(zi.Dl, zi.FullPath)
 	}
 	// check if local file already exists
-	if err == nil {
+	if err == nil && *redownload {
 		// check local file size
 		if localFileInfo.Size() != info.ContentLength {
 			// size differs, redownload

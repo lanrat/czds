@@ -28,6 +28,8 @@ Implements a client for the officially documented [CZDS REST API](https://github
 ### Usage
 ```
 Usage of ./czds-dl:
+ -force
+        force redownloading the zone even if it already exists on local disk with same size and modification date
   -out string
         path to save downloaded zones to (default ".")
   -parallel uint
@@ -35,9 +37,9 @@ Usage of ./czds-dl:
   -password string
         password to authenticate with
   -redownload
-        force redownloading the zone even if it already exists on local disk with same size and modification date
+        redownload zones that are newer on the remote server than local copy
   -retries uint
-          max retry attempts per zone file download (default 3)
+        max retry attempts per zone file download (default 3)
   -urlname
         use the filename from the url link as the saved filename instead of the file header
   -username string
