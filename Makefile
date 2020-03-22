@@ -1,5 +1,5 @@
 # creates static binaries
-CC := CGO_ENABLED=0 go build -a -installsuffix cgo
+CC := CGO_ENABLED=0 go build -ldflags "-w -s" -a -installsuffix cgo
 
 BIN_SOURCES = $(shell find cmd/$(subst bin/,,$@) -maxdepth 1 -type f -name "*.go")
 ALL_SOURCES := $(shell find . -type f -name '*.go')
