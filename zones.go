@@ -16,7 +16,7 @@ type DownloadInfo struct {
 	Filename      string
 }
 
-// DownloadZoneToWriter is analogus to DownloadZone but instead of writing it to a file, it will
+// DownloadZoneToWriter is analogous to DownloadZone but instead of writing it to a file, it will
 // write it to a provided io.Writer. It returns the number of bytes written to dest and any error
 // that was encountered.
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
