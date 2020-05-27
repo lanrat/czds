@@ -1,3 +1,4 @@
+// Package jwt defines the JWT types used by the czds authentication API
 package jwt
 
 import (

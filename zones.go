@@ -100,9 +100,7 @@ func (c *Client) GetLinks() ([]string, error) {
 	}
 
 	dLinks := make([]string, 0, len(links))
-	for _, url := range links {
-		dLinks = append(dLinks, url)
-	}
+	dLinks = append(dLinks, links...)
 
 	return dLinks, nil
 }

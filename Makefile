@@ -8,7 +8,7 @@ CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
 
-.PHONY: all fmt docker clean install deps $(CMDS)
+.PHONY: all fmt docker clean install deps $(CMDS) check
 
 all: $(BINS)
 
@@ -26,6 +26,10 @@ deps: go.mod
 
 fmt:
 	gofmt -s -w -l .
+
+check:
+	golangci-lint run --exclude-use-default || true
+	staticcheck -unused.whole-program -checks all ./...
 
 install: $(SOURCES)
 	go install $(CMDS)

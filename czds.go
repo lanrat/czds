@@ -1,3 +1,4 @@
+// Package czds implementing a client to the CZDS REST API using both the documented and undocumented API endpoints
 package czds
 
 import (
@@ -126,7 +127,7 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return resp, fmt.Errorf("Error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
+		return resp, fmt.Errorf("error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
 	}
 
 	return resp, nil
@@ -175,9 +176,12 @@ func (c *Client) Authenticate() error {
 	}
 	c.auth = authResp
 	c.authExp, err = authResp.getExpiration()
+	if err != nil {
+		return err
+	}
 
 	if !c.authExp.After(time.Now()) {
-		return fmt.Errorf("Unable to authenticate")
+		return fmt.Errorf("unable to authenticate")
 	}
 
 	return nil

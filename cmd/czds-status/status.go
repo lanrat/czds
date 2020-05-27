@@ -96,7 +96,7 @@ func getZoneRequestID(zone string) (string, error) {
 		return "", err
 	}
 	if requests.TotalRequests == 0 {
-		return "", fmt.Errorf("No request found for zone %s", zone)
+		return "", fmt.Errorf("no request found for zone %s", zone)
 	}
 	return requests.Requests[0].RequestID, nil
 }
