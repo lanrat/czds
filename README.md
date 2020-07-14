@@ -18,17 +18,18 @@ Implements a client for the officially documented [CZDS REST API](https://github
 
 ### Features
 
- * Can be used as a standalone client or as an API for another client
- * Automatically refreshes authorization token if expired during download
- * Can save downloaded zones as named by `Content-Disposition` or URL name
- * Can compare local and remote files size and modification time to skip redownloading unchanged zones
- * Can download multiple zones in parallel
- * [Docker](#docker) image available
+* Can be used as a standalone client or as an API for another client
+* Automatically refreshes authorization token if expired during download
+* Can save downloaded zones as named by `Content-Disposition` or URL name
+* Can compare local and remote files size and modification time to skip redownloading unchanged zones
+* Can download multiple zones in parallel
+* [Docker](#docker) image available
 
 ### Usage
-```
+
+```text
 Usage of ./czds-dl:
- -force
+  -force
         force redownloading the zone even if it already exists on local disk with same size and modification date
   -out string
         path to save downloaded zones to (default ".")
@@ -46,10 +47,13 @@ Usage of ./czds-dl:
         username to authenticate with
   -verbose
         enable verbose logging
+  -zone string
+        download only the specified zone, defaults to all
 ```
 
 ### Example
-```
+
+```shell
 $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:51 Authenticating to https://account-api.icann.org/api/authenticate
 2019/01/12 16:23:52 'zones' does not exist, creating
@@ -68,7 +72,8 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 Download the CSV report for current zone status.
 
 ### Usage
-```
+
+```text
 Usage of ./czds-report:
   -file string
         filename to save report to, '-' for stdout (default "report.csv")
@@ -81,7 +86,8 @@ Usage of ./czds-report:
 ```
 
 ### Example
-```
+
+```text
 $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file report.csv
 2019/02/02 17:43:37 Authenticating to https://account-api.icann.org/api/authenticate
 2019/02/02 17:43:38 Saving to report.csv
@@ -92,7 +98,8 @@ $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file repor
 Submit a new zone request to CZDS. Be sure to view and accept the terms and conditions with the `-terms` flag.
 
 ### Usage
-```
+
+```text
 Usage of ./czds-request:
   -password string
         password to authenticate with
@@ -113,19 +120,22 @@ Usage of ./czds-request:
 ```
 
 ### Example
+
 View zones able to be requested
 
-```
+```text
 $ ./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
 ```
 
 Request access to new zones
-```
+
+```text
 $ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
 ```
 
 Request access to all zones
-```
+
+```text
 $ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
 ```
 
@@ -138,7 +148,7 @@ View information about current zone file requests
 By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
-```
+```text
 Usage of ./czds-status:
   -id string
         ID of specific zone request to lookup, if none list of all are printed
@@ -154,9 +164,10 @@ Usage of ./czds-status:
 
 ### Example
 
-Show all requests: 
-```
-$ ./czds-status -username "$USERNAME" -password "$PASSWORD" 
+Show all requests:
+
+```text
+$ ./czds-status -username "$USERNAME" -password "$PASSWORD"
 TLD     ID      UnicodeTLD      Status  Created Updated Expires SFTP
 xn--mxtq1m	e59839f1-d69d-4970-9a15-7b49f3592065	政府	Approved	Wed Jan 30 08:00:42 2019	Wed Jan 30 08:53:41 2019	Sat Jan 12 08:53:41 2030	false
 aigo	c6886423-b67d-43b6-828f-9d5a6cb3e6a3	aigo	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
@@ -168,8 +179,9 @@ wtc	67f5b31d-19f0-4071-a176-25ff71f509f7	wtc	Pending	Wed Jan 30 08:00:41 2019	We
 xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08:00:41 2019	Wed Jan 30 10:55:03 2019	Tue Apr 30 10:55:03 2019	false
 ```
 
-Lookup specific request details: 
-```
+Lookup specific request details:
+
+```text
 $ ./czds-status -username "$USERNAME" -password "$PASSWORD" -zone red
 ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
 TLD:    red (red)
@@ -191,12 +203,12 @@ History:
 Just run make!
 Building from source requires go >= 1.11 for module support
 
-```
+```text
 $ make
 ```
 
 ## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
-```
+```text
 docker run --rm -v /path/to/zones/:/zones lanrat/czds czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
