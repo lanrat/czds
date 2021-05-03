@@ -27,7 +27,7 @@ Implements a client for the officially documented [CZDS REST API](https://github
 
 ### Usage
 
-```text
+```console
 Usage of ./czds-dl:
   -force
         force redownloading the zone even if it already exists on local disk with same size and modification date
@@ -124,19 +124,19 @@ Usage of ./czds-request:
 View zones able to be requested
 
 ```text
-$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
+./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
 ```
 
 Request access to new zones
 
 ```text
-$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
+./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
 ```
 
 Request access to all zones
 
 ```text
-$ ./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
+./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
 ```
 
 ## CZDS-STATUS
@@ -181,7 +181,7 @@ xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08
 
 Lookup specific request details:
 
-```text
+```console
 $ ./czds-status -username "$USERNAME" -password "$PASSWORD" -zone red
 ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
 TLD:    red (red)
@@ -203,12 +203,12 @@ History:
 Just run make!
 Building from source requires go >= 1.11 for module support
 
-```text
-$ make
+```console
+make
 ```
 
 ## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
-```text
+```console
 docker run --rm -v /path/to/zones/:/zones lanrat/czds czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
