@@ -22,14 +22,16 @@ docker: Dockerfile $(SOURCES)
 	docker build -t lanrat/czds .
 
 deps: go.mod
-	go mod download
+	GOPROXY=direct go mod download
+	GOPROXY=direct go get -u all
+	go mod tidy
 
 fmt:
 	gofmt -s -w -l .
 
 check:
 	golangci-lint run --exclude-use-default || true
-	staticcheck -unused.whole-program -checks all ./...
+	staticcheck -checks all ./...
 
 install: $(SOURCES)
 	go install $(CMDS)
