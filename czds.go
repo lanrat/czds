@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -27,20 +26,8 @@ const (
 )
 
 var (
-	httpClient = &http.Client{
-		//Timeout: time.Minute * 120, // this timeout also included reading resp body,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   60 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			//MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 30 * time.Second,
-			ExpectContinueTimeout: 5 * time.Second,
-		},
+	defaultHTTPClient = &http.Client{
+		Timeout: time.Minute * 5, // this timeout also included reading resp body
 	}
 )
 
@@ -100,7 +87,7 @@ func (c *Client) httpClient() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
 	}
-	return httpClient
+	return defaultHTTPClient
 }
 
 // apiRequest makes a request to the client's API endpoint
