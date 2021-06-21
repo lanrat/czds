@@ -26,9 +26,7 @@ const (
 )
 
 var (
-	defaultHTTPClient = &http.Client{
-		Timeout: time.Minute * 5, // this timeout also included reading resp body
-	}
+	defaultHTTPClient = &http.Client{}
 )
 
 // Client stores all session information for czds authentication
@@ -91,6 +89,7 @@ func (c *Client) httpClient() *http.Client {
 }
 
 // apiRequest makes a request to the client's API endpoint
+// TODO add optional context to requests
 func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
 	if auth {
 		err := c.checkAuth()
