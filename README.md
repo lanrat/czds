@@ -37,6 +37,8 @@ Usage of ./czds-dl:
         number of zones to download in parallel (default 5)
   -password string
         password to authenticate with
+  -quiet
+        suppress progress printing
   -redownload
         redownload zones that are newer on the remote server than local copy
   -retries uint

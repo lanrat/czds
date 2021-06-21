@@ -27,6 +27,7 @@ var (
 	verbose    = flag.Bool("verbose", false, "enable verbose logging")
 	retries    = flag.Uint("retries", 3, "max retry attempts per zone file download")
 	zone       = flag.String("zone", "", "download only the specified zone, defaults to all")
+	quiet      = flag.Bool("quiet", false, "suppress progress printing")
 
 	loadDone  = make(chan bool)
 	inputChan = make(chan *zoneInfo, 100)
@@ -35,6 +36,7 @@ var (
 )
 
 type zoneInfo struct {
+	Name     string
 	Dl       string
 	FullPath string
 	Count    int
@@ -129,6 +131,7 @@ func addLinks(downloads []string) {
 	for _, dl := range downloads {
 		work.Add(1)
 		inputChan <- &zoneInfo{
+			Name:  path.Base(dl),
 			Dl:    dl,
 			Count: 1,
 		}
@@ -187,7 +190,7 @@ func zoneDownload(zi *zoneInfo) error {
 	localFileInfo, err := os.Stat(zi.FullPath)
 	if *force {
 		v("forcing download of '%s'", zi.Dl)
-		return client.DownloadZone(zi.Dl, zi.FullPath)
+		return downloadTime(zi)
 	}
 	// check if local file already exists
 	if err == nil && *redownload {
@@ -195,22 +198,37 @@ func zoneDownload(zi *zoneInfo) error {
 		if localFileInfo.Size() != info.ContentLength {
 			// size differs, redownload
 			v("size of local file (%d) differs from remote (%d), redownloading %s", localFileInfo.Size(), info.ContentLength, localFileName)
-			return client.DownloadZone(zi.Dl, zi.FullPath)
+			return downloadTime(zi)
 		}
 		// check local file modification date
 		if localFileInfo.ModTime().Before(info.LastModified) {
 			// remote file is newer, redownload
 			v("remote file is newer than local, redownloading")
-			return client.DownloadZone(zi.Dl, zi.FullPath)
+			return downloadTime(zi)
 		}
 		// local copy is good, skip download
 		v("local file '%s' matched remote, skipping", localFileName)
 	}
 	if os.IsNotExist(err) {
 		// file does not exist, download
-		return client.DownloadZone(zi.Dl, zi.FullPath)
+		return downloadTime(zi)
 	}
 	return err
+}
+
+// downloadTime downloads the zoneInfo and prints the time taken
+func downloadTime(zi *zoneInfo) error {
+	// file does not exist, download
+	start := time.Now()
+	err := client.DownloadZone(zi.Dl, zi.FullPath)
+	if err != nil {
+		return err
+	}
+	if !*quiet {
+		delta := time.Since(start).Round(time.Millisecond)
+		fmt.Printf("downloaded %s in %s\n", zi.Name, delta)
+	}
+	return nil
 }
 
 func shuffle(src []string) []string {
