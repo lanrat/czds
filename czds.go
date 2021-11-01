@@ -107,16 +107,21 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	resp, err := c.httpClient().Do(req)
-	if err != nil {
-		return nil, err
+
+	var resp *http.Response
+	totalTrys := 3
+	for try := 0; try < totalTrys; try++ {
+		resp, err = c.httpClient().Do(req)
+
+		if resp.StatusCode != http.StatusOK {
+			err = fmt.Errorf("error on request [%d/%d] %s, got Status %s %s", try, totalTrys, url, resp.Status, http.StatusText(resp.StatusCode))
+			time.Sleep(time.Second * 10)
+		} else {
+			return resp, nil
+		}
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return resp, fmt.Errorf("error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
-	}
-
-	return resp, nil
+	return resp, err
 }
 
 // jsonAPI performes an authenticated json API request
