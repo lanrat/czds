@@ -112,8 +112,10 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	totalTrys := 3
 	for try := 0; try < totalTrys; try++ {
 		resp, err = c.httpClient().Do(req)
-
-		if resp.StatusCode != http.StatusOK {
+		if err != nil {
+			err = fmt.Errorf("error on request [%d/%d] %s, got error %s", try, totalTrys, url, err.Error())
+			time.Sleep(time.Second * 10)
+		} else if resp.StatusCode != http.StatusOK {
 			err = fmt.Errorf("error on request [%d/%d] %s, got Status %s %s", try, totalTrys, url, resp.Status, http.StatusText(resp.StatusCode))
 			time.Sleep(time.Second * 10)
 		} else {
