@@ -21,9 +21,12 @@ $(CMDS): $$(CMD_TARGETS)
 docker: Dockerfile $(SOURCES)
 	docker build -t lanrat/czds .
 
+update-deps: deps
+	GOPROXY=direct go get -u all
+	go mod tidy
+
 deps: go.mod
 	GOPROXY=direct go mod download
-	GOPROXY=direct go get -u all
 	go mod tidy
 
 fmt:
