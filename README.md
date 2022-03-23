@@ -28,7 +28,7 @@ Implements a client for the officially documented [CZDS REST API](https://github
 ### Usage
 
 ```console
-Usage of ./czds-dl:
+Usage of czds-dl:
   -force
         force redownloading the zone even if it already exists on local disk with same size and modification date
   -out string
@@ -50,7 +50,7 @@ Usage of ./czds-dl:
   -verbose
         enable verbose logging
   -zone string
-        download only the specified zone, defaults to all
+        comma separated list of zones to download, defaults to all
 ```
 
 ### Example
@@ -76,7 +76,7 @@ Download the CSV report for current zone status.
 ### Usage
 
 ```text
-Usage of ./czds-report:
+Usage of czds-report:
   -file string
         filename to save report to, '-' for stdout (default "report.csv")
   -password string
@@ -102,7 +102,7 @@ Submit a new zone request to CZDS. Be sure to view and accept the terms and cond
 ### Usage
 
 ```text
-Usage of ./czds-request:
+Usage of czds-request:
   -password string
         password to authenticate with
   -reason string
@@ -112,7 +112,7 @@ Usage of ./czds-request:
   -request-all
         request all available TLDs
   -status
-        print status of TLDS
+        print status of TLDs
   -terms
         print CZDS Terms & Conditions
   -username string
@@ -151,9 +151,9 @@ By default czds-requests prints high-level information about all czds requests, 
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```text
-Usage of ./czds-status:
+Usage of czds-status:
   -id string
-        ID of specific zone request to lookup, if none list of all are printed
+        ID of specific zone request to lookup, defaults to printing all
   -password string
         password to authenticate with
   -username string
@@ -161,7 +161,7 @@ Usage of ./czds-status:
   -verbose
         enable verbose logging
   -zone string
-        same as -id, but looked up the request by zone name
+        same as -id, but prints the request by zone name
 ```
 
 ### Example

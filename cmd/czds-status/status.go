@@ -16,8 +16,8 @@ var (
 	username = flag.String("username", "", "username to authenticate with")
 	password = flag.String("password", "", "password to authenticate with")
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
-	id       = flag.String("id", "", "ID of specific zone request to lookup, if none list of all are printed")
-	zone     = flag.String("zone", "", "same as -id, but looked up the request by zone name")
+	id       = flag.String("id", "", "ID of specific zone request to lookup, defaults to printing all")
+	zone     = flag.String("zone", "", "same as -id, but prints the request by zone name")
 
 	client *czds.Client
 )

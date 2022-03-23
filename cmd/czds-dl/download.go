@@ -26,7 +26,7 @@ var (
 	redownload = flag.Bool("redownload", false, "redownload zones that are newer on the remote server than local copy")
 	verbose    = flag.Bool("verbose", false, "enable verbose logging")
 	retries    = flag.Uint("retries", 3, "max retry attempts per zone file download")
-	zone       = flag.String("zone", "", "download only the specified zone, defaults to all")
+	zone       = flag.String("zone", "", "comma separated list of zones to download, defaults to all")
 	quiet      = flag.Bool("quiet", false, "suppress progress printing")
 
 	loadDone  = make(chan bool)
@@ -104,16 +104,17 @@ func main() {
 			log.Fatal(err)
 		}
 		v("received %d zone links", len(downloads))
-
-		// shuffle download links to better distribute load on CZDS
-		downloads = shuffle(downloads)
 	} else {
-		// this url path is not known for sure to be constant and  may break in the future
-		u, _ := url.Parse(czds.BaseURL)
-		u.Path = path.Join(u.Path, "/czds/downloads/", fmt.Sprintf("%s.zone", strings.ToLower(*zone)))
-		downloads = append(downloads, u.String())
-		*parallel = 1
+		// this url path is not known for sure to be constant and may break in the future
+		for _, zoneName := range strings.Split(*zone, ",") {
+			u, _ := url.Parse(czds.BaseURL)
+			u.Path = path.Join(u.Path, "/czds/downloads/", fmt.Sprintf("%s.zone", strings.ToLower(zoneName)))
+			downloads = append(downloads, u.String())
+		}
 	}
+
+	// shuffle download links to better distribute load on CZDS
+	downloads = shuffle(downloads)
 
 	// start workers
 	go addLinks(downloads)

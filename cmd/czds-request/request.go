@@ -17,9 +17,9 @@ var (
 	verbose     = flag.Bool("verbose", false, "enable verbose logging")
 	reason      = flag.String("reason", "", "reason to request zone access")
 	printTerms  = flag.Bool("terms", false, "print CZDS Terms & Conditions")
-	requestTLDs = flag.String("request", "", "comma separated list of TLDs to request")
-	requestAll  = flag.Bool("request-all", false, "request all available TLDs")
-	status      = flag.Bool("status", false, "print status of TLDS")
+	requestTLDs = flag.String("request", "", "comma separated list of zones to request")
+	requestAll  = flag.Bool("request-all", false, "request all available zones")
+	status      = flag.Bool("status", false, "print status of zones")
 
 	client *czds.Client
 )
