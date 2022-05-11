@@ -52,6 +52,11 @@ type authResponse struct {
 	Message     string `json:"message"`
 }
 
+type errorResponse struct {
+	Message    string `json:"message"`
+	HTTPStatus int    `json:"httpStatus"`
+}
+
 // NewClient returns a new instance of the CZDS Client with the default production URLs
 func NewClient(username, password string) *Client {
 	client := &Client{
@@ -98,28 +103,31 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 		}
 	}
 
-	req, err := http.NewRequest(method, url, request)
-	if err != nil {
-		return nil, err
-	}
-	if request != nil {
-		req.Header.Add("Content-Type", "application/json")
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-
-	var resp *http.Response
 	totalTrys := 3
-	for try := 0; try < totalTrys; try++ {
+	var err error
+	var req *http.Request
+	var resp *http.Response
+	for try := 1; try <= totalTrys; try++ {
+		req, err = http.NewRequest(method, url, request)
+		if err != nil {
+			return nil, err
+		}
+		if request != nil {
+			req.Header.Add("Content-Type", "application/json")
+		}
+		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+
 		resp, err = c.httpClient().Do(req)
 		if err != nil {
-			err = fmt.Errorf("error on request [%d/%d] %s, got error %s", try, totalTrys, url, err.Error())
-			time.Sleep(time.Second * 10)
-		} else if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("error on request [%d/%d] %s, got Status %s %s", try, totalTrys, url, resp.Status, http.StatusText(resp.StatusCode))
-			time.Sleep(time.Second * 10)
+			err = fmt.Errorf("error on request [%d/%d] %s, got error %w: %+v", try, totalTrys, url, err, resp)
 		} else {
 			return resp, nil
+		}
+
+		// sleep only if we will try again
+		if try < totalTrys {
+			time.Sleep(time.Second * 10)
 		}
 	}
 
@@ -147,6 +155,17 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 		return err
 	}
 	defer resp.Body.Close()
+
+	// got an error, decode it
+	if resp.StatusCode != http.StatusOK {
+		var errorResp errorResponse
+		err := fmt.Errorf("error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
+		jsonError := json.NewDecoder(resp.Body).Decode(&errorResp)
+		if jsonError != nil {
+			return fmt.Errorf("error decoding json %w on errord request: %s", jsonError, err.Error())
+		}
+		return fmt.Errorf("%w, HTTPStatus: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
+	}
 
 	if response != nil {
 		err = json.NewDecoder(resp.Body).Decode(&response)

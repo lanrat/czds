@@ -16,6 +16,7 @@ const (
 	RequestDenied    = "Denied"
 	RequestRevoked   = "Revoked"
 	RequestExpired   = "Expired"
+	RequestCanceled  = "Canceled"
 )
 
 // Filters for RequestsSort.Direction
@@ -41,6 +42,7 @@ const (
 	StatusApproved  = "approved"
 	StatusDenied    = "denied"
 	StatusExpired   = "expired"
+	StatusCanceled  = "canceled"
 	StatusRevoked   = "revoked" // unverified
 )
 
@@ -95,6 +97,7 @@ type TLDStatus struct {
 type HistoryEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 	Action    string    `json:"action"`
+	Comment   string    `json:"comment"`
 }
 
 // FtpDetails contains FTP information for RequestsInfo
@@ -104,19 +107,23 @@ type FtpDetails struct {
 
 // RequestsInfo contains the detailed information about a particular zone request returned by GetRequestInfo()
 type RequestsInfo struct {
-	RequestID        string         `json:"requestId"`
-	TLD              *TLDStatus     `json:"tld"`
-	FtpIps           []string       `json:"ftpips"`
-	Status           string         `json:"status"` // should be set to one of the Status* constants
-	TcVersion        string         `json:"tcVersion"`
-	Created          time.Time      `json:"created"`
-	RequestIP        string         `json:"requestIp"`
-	Reason           string         `json:"reason"`
-	LastUpdated      time.Time      `json:"last_updated"`
-	Expired          time.Time      `json:"expired"` // Note: epoch 0 means no expiration set
-	History          []HistoryEntry `json:"history"`
-	FtpDetails       *FtpDetails    `json:"ftpDetails"`
-	PrivateDataError bool           `json:"privateDataError"`
+	RequestID          string         `json:"requestId"`
+	TLD                *TLDStatus     `json:"tld"`
+	FtpIps             []string       `json:"ftpips"`
+	Status             string         `json:"status"` // should be set to one of the Status* constants
+	TcVersion          string         `json:"tcVersion"`
+	Created            time.Time      `json:"created"`
+	RequestIP          string         `json:"requestIp"`
+	Reason             string         `json:"reason"`
+	LastUpdated        time.Time      `json:"last_updated"`
+	Cancellable        bool           `json:"cancellable"`
+	Extensible         bool           `json:"extensible"`
+	ExtensionInProcess bool           `json:"extensionInProcess"`
+	AutoRenew          bool           `json:"auto_renew"`
+	Expired            time.Time      `json:"expired"` // Note: epoch 0 means no expiration set
+	History            []HistoryEntry `json:"history"`
+	FtpDetails         *FtpDetails    `json:"ftpDetails"`
+	PrivateDataError   bool           `json:"privateDataError"`
 }
 
 // RequestSubmission contains the information required to submit a new request with SubmitRequest()
@@ -134,6 +141,12 @@ type Terms struct {
 	Content    string    `json:"content"`
 	ContentURL string    `json:"contentUrl"`
 	Created    time.Time `json:"created"`
+}
+
+// CancelRequestSubmission Request canceletion arguments passed to CancelRequest()
+type CancelRequestSubmission struct {
+	RequestID string `json:"integrationId"` // This is effectivly 'requestId'
+	TLDName   string `json:"tldName"`
 }
 
 // GetRequests searches for the status of zones requests as seen on the
@@ -173,6 +186,14 @@ func (c *Client) GetTerms() (*Terms, error) {
 func (c *Client) SubmitRequest(request *RequestSubmission) error {
 	err := c.jsonAPI("POST", "/czds/requests/create", request, nil)
 	return err
+}
+
+// CancelRequest cancels a pre-existing request.
+// Can only cancel pending requests.
+func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, error) {
+	request := new(RequestsInfo)
+	err := c.jsonAPI("POST", "/czds/requests/cancel", cancel, request)
+	return request, err
 }
 
 // DownloadAllRequests outputs the contents of the csv file downloaded by

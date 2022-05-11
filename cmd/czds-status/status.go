@@ -18,6 +18,7 @@ var (
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 	id       = flag.String("id", "", "ID of specific zone request to lookup, defaults to printing all")
 	zone     = flag.String("zone", "", "same as -id, but prints the request by zone name")
+	cancel   = flag.Bool("cancel", false, "cancel the request. Requires -id or -zone")
 
 	client *czds.Client
 )
@@ -70,12 +71,41 @@ func main() {
 		id = &zoneID
 	}
 
+	if *cancel {
+		if *id == "" {
+			log.Fatal("Need to pass ID or Zone to cancel request")
+		}
+		// get zone name/id/info from ID
+		info, err := client.GetRequestInfo(*id)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cancelRequest(info.RequestID, info.TLD.TLD)
+		return
+	}
+
 	if *id == "" {
 		listAll()
 		return
 	}
 
-	printRequestInfo(*id)
+	info, err := client.GetRequestInfo(*id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printRequestInfo(info)
+}
+
+func cancelRequest(id, zone string) {
+	cancelRequest := &czds.CancelRequestSubmission{
+		RequestID: id,
+		TLDName:   zone,
+	}
+	info, err := client.CancelRequest(cancelRequest)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printRequestInfo(info)
 }
 
 func getZoneRequestID(zone string) (string, error) {
@@ -101,11 +131,7 @@ func getZoneRequestID(zone string) (string, error) {
 	return requests.Requests[0].RequestID, nil
 }
 
-func printRequestInfo(id string) {
-	info, err := client.GetRequestInfo(id)
-	if err != nil {
-		log.Fatal(err)
-	}
+func printRequestInfo(info *czds.RequestsInfo) {
 	fmt.Printf("ID:\t%s\n", info.RequestID)
 	fmt.Printf("TLD:\t%s (%s)\n", info.TLD.TLD, info.TLD.ULabel)
 	fmt.Printf("Status:\t%s\n", info.Status)
