@@ -1,6 +1,7 @@
 package czds
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -45,6 +46,9 @@ const (
 	StatusCanceled  = "canceled"
 	StatusRevoked   = "revoked" // unverified
 )
+
+// used in RequestExtension
+var emptyStruct, _ = json.Marshal(make(map[int]int))
 
 // RequestsFilter is used to set what results should be returned by GetRequests
 type RequestsFilter struct {
@@ -196,6 +200,14 @@ func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, 
 	return request, err
 }
 
+// RequestExtension submits a request to have the access extended.
+// Can only request extensions for requests expiering within 30 days.
+func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
+	request := new(RequestsInfo)
+	err := c.jsonAPI("POST", "/czds/requests/extension/"+requestID, emptyStruct, request)
+	return request, err
+}
+
 // DownloadAllRequests outputs the contents of the csv file downloaded by
 // the "Download All Requests" button on the CZDS portal to the provided output
 func (c *Client) DownloadAllRequests(output io.Writer) error {
@@ -271,4 +283,52 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	}
 	err = c.SubmitRequest(request)
 	return requestTLDs, err
+}
+
+// ExtendTLD is a helper function that requests extensions to the provided tld
+// TLDs provided should be marked as Extensible from GetRequestInfo()
+func (c *Client) ExtendTLD(tld string) error {
+
+	zoneID, err := c.GetZoneRequestID(tld)
+	if err != nil {
+		return fmt.Errorf("error GetZoneRequestID(%q): %w", tld, err)
+	}
+
+	info, err := c.RequestExtension(zoneID)
+	if err != nil {
+		return fmt.Errorf("RequestExtension(%q): %w", tld, err)
+	}
+
+	if !info.ExtensionInProcess {
+		return fmt.Errorf("error, zone request %q, %q: extension already in progress", tld, zoneID)
+	}
+
+	return nil
+}
+
+// ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
+func (c *Client) ExtendAllTLDs() ([]string, error) {
+	tlds := make([]string, 0, 10)
+
+	requests, err := c.GetAllRequests(RequestApproved)
+	if err != nil {
+		return tlds, err
+	}
+
+	// get available to extend
+	for _, r := range requests {
+		info, err := c.GetRequestInfo(r.RequestID)
+		if err != nil {
+			return nil, err
+		}
+		if info.Extensible {
+			_, err := c.RequestExtension(info.RequestID)
+			if err != nil {
+				return tlds, err
+			}
+			tlds = append(tlds, info.TLD.TLD)
+		}
+	}
+
+	return tlds, err
 }

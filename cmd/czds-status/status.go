@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/lanrat/czds"
@@ -18,13 +17,9 @@ var (
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 	id       = flag.String("id", "", "ID of specific zone request to lookup, defaults to printing all")
 	zone     = flag.String("zone", "", "same as -id, but prints the request by zone name")
-	cancel   = flag.Bool("cancel", false, "cancel the request. Requires -id or -zone")
+	cancel   = flag.Bool("cancel", false, "cancel the request. Requires -id or -zone") // TODO move this to czds-request
 
 	client *czds.Client
-)
-
-const (
-	pageSize = 100
 )
 
 func v(format string, v ...interface{}) {
@@ -64,7 +59,7 @@ func main() {
 
 	if *zone != "" {
 		// get id from zone name
-		zoneID, err := getZoneRequestID(*zone)
+		zoneID, err := client.GetZoneRequestID(*zone)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,29 +103,6 @@ func cancelRequest(id, zone string) {
 	printRequestInfo(info)
 }
 
-func getZoneRequestID(zone string) (string, error) {
-	filter := czds.RequestsFilter{
-		Status: czds.RequestAll,
-		Filter: strings.ToLower(zone),
-		Pagination: czds.RequestsPagination{
-			Size: 1,
-			Page: 0,
-		},
-		Sort: czds.RequestsSort{
-			Field:     czds.SortByLastUpdated,
-			Direction: czds.SortDesc,
-		},
-	}
-	requests, err := client.GetRequests(&filter)
-	if err != nil {
-		return "", err
-	}
-	if requests.TotalRequests == 0 {
-		return "", fmt.Errorf("no request found for zone %s", zone)
-	}
-	return requests.Requests[0].RequestID, nil
-}
-
 func printRequestInfo(info *czds.RequestsInfo) {
 	fmt.Printf("ID:\t%s\n", info.RequestID)
 	fmt.Printf("TLD:\t%s (%s)\n", info.TLD.TLD, info.TLD.ULabel)
@@ -138,6 +110,10 @@ func printRequestInfo(info *czds.RequestsInfo) {
 	fmt.Printf("Created:\t%s\n", info.Created.Format(time.ANSIC))
 	fmt.Printf("Updated:\t%s\n", info.LastUpdated.Format(time.ANSIC))
 	fmt.Printf("Expires:\t%s\n", expiredTime(info.Expired))
+	fmt.Printf("AutoRenew:\t%t\n", info.AutoRenew)
+	fmt.Printf("Extensible:\t%t\n", info.Extensible)
+	fmt.Printf("ExtensionInProcess:\t%t\n", info.ExtensionInProcess)
+	fmt.Printf("Cancellable:\t%t\n", info.Cancellable)
 	fmt.Printf("Request IP:\t%s\n", info.RequestIP)
 	fmt.Println("FTP IPs:\t", info.FtpIps)
 	fmt.Printf("Reason:\t%s\n", info.Reason)
@@ -148,36 +124,18 @@ func printRequestInfo(info *czds.RequestsInfo) {
 }
 
 func listAll() {
-	filter := czds.RequestsFilter{
-		Status: czds.RequestAll,
-		Filter: "",
-		Pagination: czds.RequestsPagination{
-			Size: pageSize,
-			Page: 0,
-		},
-		Sort: czds.RequestsSort{
-			Field:     czds.SortByCreated,
-			Direction: czds.SortDesc,
-		},
-	}
-
-	requests, err := client.GetRequests(&filter)
+	requests, err := client.GetAllRequests(czds.RequestAll)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	v("Total requests: %d", requests.TotalRequests)
-	if len(requests.Requests) > 0 {
+	v("Total requests: %d", len(requests))
+	if len(requests) > 0 {
 		printHeader()
 	}
-	for len(requests.Requests) != 0 {
-		for _, request := range requests.Requests {
+	for len(requests) != 0 {
+		for _, request := range requests {
 			printRequest(request)
-		}
-		filter.Pagination.Page++
-		requests, err = client.GetRequests(&filter)
-		if err != nil {
-			log.Fatal(err)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,12 +160,15 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 	// got an error, decode it
 	if resp.StatusCode != http.StatusOK {
 		var errorResp errorResponse
-		err := fmt.Errorf("error on request %s, got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
-		jsonError := json.NewDecoder(resp.Body).Decode(&errorResp)
-		if jsonError != nil {
-			return fmt.Errorf("error decoding json %w on errord request: %s", jsonError, err.Error())
+		err := fmt.Errorf("error on request %q: got Status %s %s", url, resp.Status, http.StatusText(resp.StatusCode))
+		if resp.ContentLength != 0 {
+			jsonError := json.NewDecoder(resp.Body).Decode(&errorResp)
+			if jsonError != nil {
+				return fmt.Errorf("error decoding json %w on errord request: %s", jsonError, err.Error())
+			}
+			err = fmt.Errorf("%w HTTPStatus: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
 		}
-		return fmt.Errorf("%w, HTTPStatus: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
+		return err
 	}
 
 	if response != nil {
@@ -204,4 +208,63 @@ func (ar *authResponse) getExpiration() (time.Time, error) {
 	token, err := jwt.DecodeJWT(ar.AccessToken)
 	exp := time.Unix(token.Data.Exp, 0)
 	return exp, err
+}
+
+// GetZoneRequestID returns the most request RequestID for the given zone
+func (c *Client) GetZoneRequestID(zone string) (string, error) {
+	filter := RequestsFilter{
+		Status: RequestAll,
+		Filter: strings.ToLower(zone),
+		Pagination: RequestsPagination{
+			Size: 1,
+			Page: 0,
+		},
+		Sort: RequestsSort{
+			Field:     SortByLastUpdated,
+			Direction: SortDesc,
+		},
+	}
+	requests, err := c.GetRequests(&filter)
+	if err != nil {
+		return "", err
+	}
+	if requests.TotalRequests == 0 {
+		return "", fmt.Errorf("no request found for zone %s", zone)
+	}
+	return requests.Requests[0].RequestID, nil
+}
+
+// GetAllRequests returns the request information for all requests with the given status
+// status should be one of the constsnt czds.Status* strings
+func (c *Client) GetAllRequests(status string) ([]Request, error) {
+	const pageSize = 100
+	filter := RequestsFilter{
+		Status: status,
+		Filter: "",
+		Pagination: RequestsPagination{
+			Size: pageSize,
+			Page: 0,
+		},
+		Sort: RequestsSort{
+			Field:     SortByCreated,
+			Direction: SortDesc,
+		},
+	}
+
+	out := make([]Request, 0, 100)
+	requests, err := c.GetRequests(&filter)
+	if err != nil {
+		return out, err
+	}
+
+	for len(requests.Requests) != 0 {
+		out = append(out, requests.Requests...)
+		filter.Pagination.Page++
+		requests, err = c.GetRequests(&filter)
+		if err != nil {
+			return out, err
+		}
+	}
+
+	return out, nil
 }

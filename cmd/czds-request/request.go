@@ -20,6 +20,8 @@ var (
 	requestTLDs = flag.String("request", "", "comma separated list of zones to request")
 	requestAll  = flag.Bool("request-all", false, "request all available zones")
 	status      = flag.Bool("status", false, "print status of zones")
+	extendTLDs  = flag.String("extend", "", "comma separated list of zones to request extensions")
+	extendAll   = flag.Bool("extend-all", false, "extend all possible zones")
 
 	client *czds.Client
 )
@@ -51,7 +53,8 @@ func main() {
 	checkFlags()
 
 	doRequest := (*requestAll || len(*requestTLDs) > 0)
-	if !*printTerms && !*status && !doRequest {
+	doExtend := (*extendAll || len(*extendTLDs) > 0)
+	if !*printTerms && !*status && !(doRequest || doExtend) {
 		log.Fatal("Nothing to do!")
 	}
 
@@ -93,7 +96,7 @@ func main() {
 		}
 		var requestedTLDs []string
 		if *requestAll {
-			v("Requesting All TLDs")
+			v("Requesting all TLDs")
 			requestedTLDs, err = client.RequestAllTLDs(*reason)
 		} else {
 			tlds := strings.Split(*requestTLDs, ",")
@@ -107,6 +110,28 @@ func main() {
 		}
 		if len(requestedTLDs) > 0 {
 			fmt.Printf("Requested: %v\n", requestedTLDs)
+		}
+	}
+	// extend
+	if doExtend {
+		var extendedTLDs []string
+		if *extendAll {
+			v("Requesting extension for all TLDs")
+			extendedTLDs, err = client.ExtendAllTLDs()
+		} else {
+			tlds := strings.Split(*extendTLDs, ",")
+			for _, tld := range tlds {
+				v("Requesting extension %v", tld)
+				err = client.ExtendTLD(tld)
+				extendedTLDs = tlds
+			}
+		}
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(extendedTLDs) > 0 {
+			fmt.Printf("Extended: %v\n", extendedTLDs)
 		}
 	}
 }
