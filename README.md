@@ -103,16 +103,20 @@ Submit a new zone request to CZDS. Be sure to view and accept the terms and cond
 
 ```text
 Usage of czds-request:
+  -extend string
+        comma separated list of zones to request extensions
+  -extend-all
+        extend all possible zones
   -password string
         password to authenticate with
   -reason string
         reason to request zone access
   -request string
-        comma separated list of TLDs to request
+        comma separated list of zones to request
   -request-all
-        request all available TLDs
+        request all available zones
   -status
-        print status of TLDs
+        print status of zones
   -terms
         print CZDS Terms & Conditions
   -username string
