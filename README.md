@@ -148,10 +148,12 @@ View information about current zone file requests
 ### Usage
 
 By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
-Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
+Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag. Individual pending requests can be canceled with the `-cancel` flag.
 
 ```text
 Usage of czds-status:
+  -cancel
+        cancel the request. Requires -id or -zone
   -id string
         ID of specific zone request to lookup, defaults to printing all
   -password string

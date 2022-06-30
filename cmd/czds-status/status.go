@@ -18,7 +18,7 @@ var (
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 	id       = flag.String("id", "", "ID of specific zone request to lookup, defaults to printing all")
 	zone     = flag.String("zone", "", "same as -id, but prints the request by zone name")
-	cancel   = flag.Bool("cancel", false, "cancel the request. Requires -id or -zone") // TODO update readme
+	cancel   = flag.Bool("cancel", false, "cancel the request. Requires -id or -zone")
 
 	client *czds.Client
 )
