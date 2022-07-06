@@ -135,12 +135,12 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	return resp, err
 }
 
-// jsonAPI performes an authenticated json API request
+// jsonAPI performs an authenticated json API request
 func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
 	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
 }
 
-// jsonRequest performes a request to the API endpoint sending and receiving JSON objects
+// jsonRequest performs a request to the API endpoint sending and receiving JSON objects
 func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
 	var payloadReader io.Reader
 	if request != nil {
@@ -164,7 +164,7 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 		if resp.ContentLength != 0 {
 			jsonError := json.NewDecoder(resp.Body).Decode(&errorResp)
 			if jsonError != nil {
-				return fmt.Errorf("error decoding json %w on errord request: %s", jsonError, err.Error())
+				return fmt.Errorf("error decoding json %w on errored request: %s", jsonError, err.Error())
 			}
 			err = fmt.Errorf("%w HTTPStatus: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
 		}
@@ -235,7 +235,8 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 }
 
 // GetAllRequests returns the request information for all requests with the given status
-// status should be one of the constsnt czds.Status* strings
+// status should be one of the constant czds.Status* strings
+// warning: for large number of results, may be slow
 func (c *Client) GetAllRequests(status string) ([]Request, error) {
 	const pageSize = 100
 	filter := RequestsFilter{

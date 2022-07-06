@@ -309,26 +309,68 @@ func (c *Client) ExtendTLD(tld string) error {
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
 func (c *Client) ExtendAllTLDs() ([]string, error) {
 	tlds := make([]string, 0, 10)
+	toExtend := make([]Request, 0, 10)
 
-	requests, err := c.GetAllRequests(RequestApproved)
-	if err != nil {
-		return tlds, err
+	// get all TLDs to extend
+	const pageSize = 100
+	filter := RequestsFilter{
+		Status: RequestApproved,
+		Filter: "",
+		Pagination: RequestsPagination{
+			Size: pageSize,
+			Page: 0,
+		},
+		Sort: RequestsSort{
+			Field:     SortByExpiration,
+			Direction: SortAsc,
+		},
 	}
 
-	// get available to extend
-	for _, r := range requests {
-		info, err := c.GetRequestInfo(r.RequestID)
+	// test if a request is extensible
+	isExtensible := func(id string) (bool, error) {
+		info, err := c.GetRequestInfo(id)
+		return info.Extensible, err
+	}
+
+	// since requests are sorted by expiration date once we find one that is non extensible, we can exit
+	loopExtensible := true
+	for loopExtensible {
+		req, err := c.GetRequests(&filter)
 		if err != nil {
-			return nil, err
+			return tlds, err
 		}
-		if info.Extensible {
-			_, err := c.RequestExtension(info.RequestID)
+		for _, r := range req.Requests {
+			if !loopExtensible {
+				break
+			}
+			ext, err := isExtensible(r.RequestID)
 			if err != nil {
 				return tlds, err
 			}
-			tlds = append(tlds, info.TLD.TLD)
+			if ext {
+				toExtend = append(toExtend, r)
+			} else {
+				loopExtensible = false
+			}
+		}
+		filter.Pagination.Page++
+		if len(req.Requests) == 0 {
+			break
 		}
 	}
 
-	return tlds, err
+	// perform extend
+	for _, r := range toExtend {
+		_, err := c.RequestExtension(r.RequestID)
+		if err != nil {
+			return tlds, err
+		}
+		tlds = append(tlds, r.TLD)
+	}
+
+	if len(tlds) != len(toExtend) {
+		return tlds, fmt.Errorf("expected to extend %d TLDs but only extended %d", len(toExtend), len(tlds))
+	}
+
+	return tlds, nil
 }
