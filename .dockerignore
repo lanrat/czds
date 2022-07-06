@@ -4,3 +4,4 @@ bin/
 Dockerfile
 LICENSE
 README.md
+.vscode/

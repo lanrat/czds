@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// cSpell:ignore ftpips ulable tlds
+
 // Filters for RequestsFilter.Status
 // Statuses for RequestStatus.Status
 const (
@@ -147,9 +149,9 @@ type Terms struct {
 	Created    time.Time `json:"created"`
 }
 
-// CancelRequestSubmission Request canceletion arguments passed to CancelRequest()
+// CancelRequestSubmission Request cancellation arguments passed to CancelRequest()
 type CancelRequestSubmission struct {
-	RequestID string `json:"integrationId"` // This is effectivly 'requestId'
+	RequestID string `json:"integrationId"` // This is effectively 'requestId'
 	TLDName   string `json:"tldName"`
 }
 
@@ -201,7 +203,7 @@ func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, 
 }
 
 // RequestExtension submits a request to have the access extended.
-// Can only request extensions for requests expiering within 30 days.
+// Can only request extensions for requests expiring within 30 days.
 func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
 	request := new(RequestsInfo)
 	err := c.jsonAPI("POST", "/czds/requests/extension/"+requestID, emptyStruct, request)
