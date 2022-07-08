@@ -8,7 +8,7 @@ CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
 
-.PHONY: all fmt docker clean install deps $(CMDS) check
+.PHONY: all fmt docker clean install deps $(CMDS) check release
 
 all: $(BINS)
 
@@ -41,3 +41,18 @@ install: $(SOURCES)
 
 clean:
 	rm -r $(BINS)
+
+release: $(BINS)
+	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))
+	@echo current: $v
+ifeq ($(bump), major)
+	$(eval v := $(shell echo $(v) | awk 'BEGIN{FS=OFS="."} {$$1+=1;$$2=$$3=0} 1'))
+else ifeq ($(bump), minor)
+	$(eval v := $(shell echo $(v) | awk 'BEGIN{FS=OFS="."} {$$2+=1;$$3=0} 1'))
+else
+	$(eval v := $(shell echo $(v) | awk 'BEGIN{FS=OFS="."}{$$3+=1;} 1'))
+endif
+	@echo next: $(v)
+	@(git diff --exit-code --shortstat && git diff --exit-code --cached --shortstat)
+	git tag v$(v) -m '"release v$(v)"'
+	git push --tags
