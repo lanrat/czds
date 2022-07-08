@@ -55,4 +55,4 @@ endif
 	@echo next: $(v)
 	@(git diff --exit-code --shortstat && git diff --exit-code --cached --shortstat)
 	git tag v$(v) -m '"release v$(v)"'
-	git push --tags
+	git push && git push --tags
