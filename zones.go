@@ -25,8 +25,15 @@ func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error)
 		return 0, err
 	}
 	defer resp.Body.Close()
+	w, err := io.Copy(dest, resp.Body)
+	if err != nil {
+		return w, err
+	}
 
-	return io.Copy(dest, resp.Body)
+	if w != resp.ContentLength {
+		return w, fmt.Errorf("downloaded bytes: %d, while request content-length is: %d ", w, resp.ContentLength)
+	}
+	return w, nil
 }
 
 // DownloadZone provided the zone download URL retrieved from GetLinks() downloads the zone file and
@@ -41,9 +48,11 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 
 	n, err := c.DownloadZoneToWriter(url, file)
 	if err != nil {
+		os.Remove(destinationPath)
 		return err
 	}
 	if n == 0 {
+		os.Remove(destinationPath)
 		return fmt.Errorf("%s was empty", destinationPath)
 	}
 
