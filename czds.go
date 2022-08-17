@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -212,11 +213,23 @@ func (ar *authResponse) getExpiration() (time.Time, error) {
 
 // GetZoneRequestID returns the most request RequestID for the given zone
 func (c *Client) GetZoneRequestID(zone string) (string, error) {
+	zone = strings.ToLower(zone)
+
+	// given a RequestsResponse, return the request for the provided zone if found, otherwise nil
+	findFirstZoneInRequests := func(zone string, r *RequestsResponse) *Request {
+		for _, request := range r.Requests {
+			if strings.ToLower(request.TLD) == zone {
+				return &request
+			}
+		}
+		return nil
+	}
+
 	filter := RequestsFilter{
 		Status: RequestAll,
-		Filter: strings.ToLower(zone),
+		Filter: zone,
 		Pagination: RequestsPagination{
-			Size: 1,
+			Size: 100,
 			Page: 0,
 		},
 		Sort: RequestsSort{
@@ -224,14 +237,29 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 			Direction: SortDesc,
 		},
 	}
+
+	// get all requests matching filter
 	requests, err := c.GetRequests(&filter)
 	if err != nil {
 		return "", err
 	}
-	if requests.TotalRequests == 0 {
+	// check if zone in returned requests
+	request := findFirstZoneInRequests(zone, requests)
+	// if zone is not found in requests, and there are more requests to get, iterate through them
+	for request == nil && len(requests.Requests) != 0 {
+		log.Printf("looping")
+		filter.Pagination.Page++
+		requests, err = c.GetRequests(&filter)
+		if err != nil {
+			return "", err
+		}
+		request = findFirstZoneInRequests(zone, requests)
+	}
+
+	if requests.TotalRequests == 0 || request == nil {
 		return "", fmt.Errorf("no request found for zone %s", zone)
 	}
-	return requests.Requests[0].RequestID, nil
+	return request.RequestID, nil
 }
 
 // GetAllRequests returns the request information for all requests with the given status
