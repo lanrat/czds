@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -247,7 +246,6 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	request := findFirstZoneInRequests(zone, requests)
 	// if zone is not found in requests, and there are more requests to get, iterate through them
 	for request == nil && len(requests.Requests) != 0 {
-		log.Printf("looping")
 		filter.Pagination.Page++
 		requests, err = c.GetRequests(&filter)
 		if err != nil {
