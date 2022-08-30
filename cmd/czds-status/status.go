@@ -105,8 +105,6 @@ func listAll() {
 	v("Total requests: %d", len(requests))
 	if len(requests) > 0 {
 		printHeader()
-	}
-	for len(requests) != 0 {
 		for _, request := range requests {
 			printRequest(request)
 		}
