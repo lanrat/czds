@@ -24,6 +24,7 @@ var (
 	status      = flag.Bool("status", false, "print status of zones")
 	extendTLDs  = flag.String("extend", "", "comma separated list of zones to request extensions")
 	extendAll   = flag.Bool("extend-all", false, "extend all possible zones")
+	cancelTLDs  = flag.String("cancel", "", "comma separated list of zones to cancel outstanding requests for")
 
 	client *czds.Client
 )
@@ -56,7 +57,8 @@ func main() {
 
 	doRequest := (*requestAll || len(*requestTLDs) > 0)
 	doExtend := (*extendAll || len(*extendTLDs) > 0)
-	if !*printTerms && !*status && !(doRequest || doExtend) {
+	doCancel := len(*extendTLDs) > 0
+	if !*printTerms && !*status && !(doRequest || doExtend) && !doCancel {
 		log.Fatal("Nothing to do!")
 	}
 
@@ -125,8 +127,12 @@ func main() {
 			for _, tld := range tlds {
 				v("Requesting extension %v", tld)
 				err = client.ExtendTLD(tld)
-				extendedTLDs = tlds
+				if err != nil {
+					// stop on first error
+					break
+				}
 			}
+			extendedTLDs = tlds
 		}
 
 		if err != nil {
@@ -136,8 +142,42 @@ func main() {
 			fmt.Printf("Extended: %v\n", extendedTLDs)
 		}
 	}
+	// cancel
+	if doCancel {
+		tlds := strings.Split(*cancelTLDs, ",")
+		for _, tld := range tlds {
+			v("Requesting cancellation %v", tld)
+			err = cancelRequest(tld)
+			if err != nil {
+				// stop on first error
+				break
+			}
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(tlds) > 0 {
+			fmt.Printf("Canceled: %v\n", tlds)
+		}
+	}
 }
 
 func printTLDStatus(tldStatus czds.TLDStatus) {
 	fmt.Printf("%s\t%s\n", tldStatus.TLD, tldStatus.CurrentStatus)
+}
+
+func cancelRequest(zone string) error {
+	zoneID, err := client.GetZoneRequestID(zone)
+	if err != nil {
+		return err
+	}
+	cancelRequest := &czds.CancelRequestSubmission{
+		RequestID: zoneID,
+		TLDName:   zone,
+	}
+	_, err = client.CancelRequest(cancelRequest)
+	if err != nil {
+		return err
+	}
+	return nil
 }

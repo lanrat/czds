@@ -97,12 +97,14 @@ $ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file repor
 
 ## CZDS-REQUEST
 
-Submit a new zone request to CZDS. Be sure to view and accept the terms and conditions with the `-terms` flag.
+Submit a new zone request or modify an existing CZDS request. Be sure to view and accept the terms and conditions with the `-terms` flag.
 
 ### Usage
 
 ```text
 Usage of czds-request:
+  -cancel string
+        comma separated list of zones to cancel outstanding requests for
   -extend string
         comma separated list of zones to request extensions
   -extend-all
@@ -152,12 +154,10 @@ View information about current zone file requests
 ### Usage
 
 By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
-Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag. Individual pending requests can be canceled with the `-cancel` flag.
+Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```text
 Usage of czds-status:
-  -cancel
-        cancel the request. Requires -id or -zone
   -id string
         ID of specific zone request to lookup, defaults to printing all
   -password string
