@@ -334,25 +334,19 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 		return info.Extensible, err
 	}
 
-	// since requests are sorted by expiration date once we find one that is non extensible, we can exit
-	loopExtensible := true
-	for loopExtensible {
+	// get all pages of requests and check which ones are extendable
+	for {
 		req, err := c.GetRequests(&filter)
 		if err != nil {
 			return tlds, err
 		}
 		for _, r := range req.Requests {
-			if !loopExtensible {
-				break
-			}
 			ext, err := isExtensible(r.RequestID)
 			if err != nil {
 				return tlds, err
 			}
 			if ext {
 				toExtend = append(toExtend, r)
-			} else {
-				loopExtensible = false
 			}
 		}
 		filter.Pagination.Page++
