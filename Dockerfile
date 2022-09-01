@@ -1,6 +1,6 @@
 # build stage
 FROM golang:alpine AS czds-build-env
-RUN apk update && apk add --no-cache make
+RUN apk update && apk add --no-cache make git
 
 WORKDIR /go/app/
 COPY . .

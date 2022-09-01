@@ -1,9 +1,10 @@
 BIN_SOURCES = $(shell find cmd/$(subst bin/,,$@) -maxdepth 1 -type f -name "*.go")
 ALL_SOURCES := $(shell find . -type f -name '*.go')
-MODULE_SOURCES := $(shell find . -type f -name '*.go' ! -path "./cmd/*" )
+MODULE_SOURCES := $(shell find . -type f -name '*.go' ! -path "./cmd/*")
 CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
+GIT_VERSION := $(shell git describe --tags)
 
 # creates static binaries
 CC := CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -a -installsuffix cgo

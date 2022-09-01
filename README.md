@@ -49,6 +49,8 @@ Usage of czds-dl:
         username to authenticate with
   -verbose
         enable verbose logging
+  -version
+        print version and exit
   -zone string
         comma separated list of zones to download, defaults to all
 ```
@@ -85,6 +87,8 @@ Usage of czds-report:
         username to authenticate with
   -verbose
         enable verbose logging
+  -version
+        print version and exit
 ```
 
 ### Example
@@ -125,7 +129,8 @@ Usage of czds-request:
         username to authenticate with
   -verbose
         enable verbose logging
-```
+  -version
+        print version and exit
 
 ### Example
 
@@ -166,6 +171,8 @@ Usage of czds-status:
         username to authenticate with
   -verbose
         enable verbose logging
+  -version
+        print version and exit
   -zone string
         same as -id, but prints the request by zone name
 ```
