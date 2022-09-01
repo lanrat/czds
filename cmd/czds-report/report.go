@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -9,14 +10,18 @@ import (
 	"github.com/lanrat/czds"
 )
 
+// flags
 var (
-	// flags
-	username = flag.String("username", "", "username to authenticate with")
-	password = flag.String("password", "", "password to authenticate with")
-	outFile  = flag.String("file", "report.csv", "filename to save report to, '-' for stdout")
-	verbose  = flag.Bool("verbose", false, "enable verbose logging")
+	username    = flag.String("username", "", "username to authenticate with")
+	password    = flag.String("password", "", "password to authenticate with")
+	outFile     = flag.String("file", "report.csv", "filename to save report to, '-' for stdout")
+	verbose     = flag.Bool("verbose", false, "enable verbose logging")
+	showVersion = flag.Bool("version", false, "print version and exit")
+)
 
-	client *czds.Client
+var (
+	version = "unknown"
+	client  *czds.Client
 )
 
 func v(format string, v ...interface{}) {
@@ -27,6 +32,10 @@ func v(format string, v ...interface{}) {
 
 func checkFlags() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Version: %s\n", version)
+		os.Exit(0)
+	}
 	flagError := false
 	if len(*username) == 0 {
 		log.Printf("must pass username")

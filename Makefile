@@ -1,12 +1,12 @@
-# creates static binaries
-CC := CGO_ENABLED=0 go build -ldflags "-w -s" -a -installsuffix cgo
-
 BIN_SOURCES = $(shell find cmd/$(subst bin/,,$@) -maxdepth 1 -type f -name "*.go")
 ALL_SOURCES := $(shell find . -type f -name '*.go')
 MODULE_SOURCES := $(shell find . -type f -name '*.go' ! -path "./cmd/*" )
 CMDS := $(shell ls cmd/)
 BINS := $(CMDS:%=bin/%)
 CMD_TARGETS = $(@:%=bin/%)
+
+# creates static binaries
+CC := CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -a -installsuffix cgo
 
 .PHONY: all fmt docker clean install deps $(CMDS) check release
 
@@ -40,7 +40,7 @@ install: $(SOURCES)
 	go install $(CMDS)
 
 clean:
-	rm -r $(BINS)
+	rm -rf $(BINS)
 
 release: $(BINS)
 	$(eval v := $(shell git describe --tags --abbrev=0 | sed -Ee 's/^v|-.*//'))

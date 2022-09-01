@@ -18,20 +18,24 @@ import (
 // cSpell:words redownload redownloading
 // cSpell:ignore urlname
 
+// flags
 var (
-	// flags
-	username   = flag.String("username", "", "username to authenticate with")
-	password   = flag.String("password", "", "password to authenticate with")
-	parallel   = flag.Uint("parallel", 5, "number of zones to download in parallel")
-	outDir     = flag.String("out", ".", "path to save downloaded zones to")
-	urlName    = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
-	force      = flag.Bool("force", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
-	redownload = flag.Bool("redownload", false, "redownload zones that are newer on the remote server than local copy")
-	verbose    = flag.Bool("verbose", false, "enable verbose logging")
-	retries    = flag.Uint("retries", 3, "max retry attempts per zone file download")
-	zone       = flag.String("zone", "", "comma separated list of zones to download, defaults to all")
-	quiet      = flag.Bool("quiet", false, "suppress progress printing")
+	username    = flag.String("username", "", "username to authenticate with")
+	password    = flag.String("password", "", "password to authenticate with")
+	parallel    = flag.Uint("parallel", 5, "number of zones to download in parallel")
+	outDir      = flag.String("out", ".", "path to save downloaded zones to")
+	urlName     = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
+	force       = flag.Bool("force", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
+	redownload  = flag.Bool("redownload", false, "redownload zones that are newer on the remote server than local copy")
+	verbose     = flag.Bool("verbose", false, "enable verbose logging")
+	retries     = flag.Uint("retries", 3, "max retry attempts per zone file download")
+	zone        = flag.String("zone", "", "comma separated list of zones to download, defaults to all")
+	quiet       = flag.Bool("quiet", false, "suppress progress printing")
+	showVersion = flag.Bool("version", false, "print version and exit")
+)
 
+var (
+	version   = "unknown"
 	loadDone  = make(chan bool)
 	inputChan = make(chan *zoneInfo, 100)
 	work      sync.WaitGroup
@@ -53,6 +57,10 @@ func v(format string, v ...interface{}) {
 
 func checkFlags() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Version: %s\n", version)
+		os.Exit(0)
+	}
 	flagError := false
 	if *parallel < 1 {
 		log.Printf("parallel must be positive")

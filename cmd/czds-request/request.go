@@ -12,8 +12,8 @@ import (
 
 // cSpell:ignore tlds
 
+// flags
 var (
-	// flags
 	username    = flag.String("username", "", "username to authenticate with")
 	password    = flag.String("password", "", "password to authenticate with")
 	verbose     = flag.Bool("verbose", false, "enable verbose logging")
@@ -25,8 +25,12 @@ var (
 	extendTLDs  = flag.String("extend", "", "comma separated list of zones to request extensions")
 	extendAll   = flag.Bool("extend-all", false, "extend all possible zones")
 	cancelTLDs  = flag.String("cancel", "", "comma separated list of zones to cancel outstanding requests for")
+	showVersion = flag.Bool("version", false, "print version and exit")
+)
 
-	client *czds.Client
+var (
+	version = "unknown"
+	client  *czds.Client
 )
 
 func v(format string, v ...interface{}) {
@@ -37,6 +41,10 @@ func v(format string, v ...interface{}) {
 
 func checkFlags() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Version: %s\n", version)
+		os.Exit(0)
+	}
 	flagError := false
 	if len(*username) == 0 {
 		log.Printf("must pass username")
