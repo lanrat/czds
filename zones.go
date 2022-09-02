@@ -20,6 +20,7 @@ type DownloadInfo struct {
 // write it to a provided io.Writer. It returns the number of bytes written to dest and any error
 // that was encountered.
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
+	c.v("downloading zone from %q", url)
 	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
 		return 0, err
@@ -30,6 +31,7 @@ func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error)
 		return w, err
 	}
 
+	c.v("downloading %d bytes finished from %q", resp.ContentLength, url)
 	if w != resp.ContentLength {
 		return w, fmt.Errorf("downloaded bytes: %d, while request content-length is: %d ", w, resp.ContentLength)
 	}
@@ -62,6 +64,7 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 // GetDownloadInfo Performs a HEAD request to the zone at url and populates a DownloadInfo struct
 // with the information returned by the headers
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
+	c.v("GetDownloadInfo for %q", url)
 	resp, err := c.apiRequest(true, "HEAD", url, nil)
 	if err != nil {
 		return nil, err
@@ -103,6 +106,7 @@ func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 // GetLinks returns the DownloadLinks available to the authenticated user
 func (c *Client) GetLinks() ([]string, error) {
 	links := make([]string, 0, 10)
+	c.v("GetLinks called")
 	err := c.jsonAPI("GET", "/czds/downloads/links", nil, &links)
 	if err != nil {
 		return nil, err
@@ -110,6 +114,7 @@ func (c *Client) GetLinks() ([]string, error) {
 
 	dLinks := make([]string, 0, len(links))
 	dLinks = append(dLinks, links...)
+	c.v("GetLinks returned %d links", len(dLinks))
 
 	return dLinks, nil
 }

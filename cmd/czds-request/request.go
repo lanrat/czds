@@ -71,6 +71,9 @@ func main() {
 	}
 
 	client = czds.NewClient(*username, *password)
+	if *verbose {
+		client.SetLogger(log.Default())
+	}
 
 	// validate credentials
 	v("Authenticating to %s", client.AuthURL)

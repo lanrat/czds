@@ -158,6 +158,7 @@ type CancelRequestSubmission struct {
 // GetRequests searches for the status of zones requests as seen on the
 // CZDS dashboard page "https://czds.icann.org/zone-requests/all"
 func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) {
+	c.v("GetRequests filter: %+v", filter)
 	requests := new(RequestsResponse)
 	err := c.jsonAPI("POST", "/czds/requests/all", filter, requests)
 	return requests, err
@@ -166,6 +167,7 @@ func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) 
 // GetRequestInfo gets detailed information about a particular request and its timeline
 // as seen on the CZDS dashboard page "https://czds.icann.org/zone-requests/{ID}"
 func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
+	c.v("GetRequestInfo request ID: %s", requestID)
 	request := new(RequestsInfo)
 	err := c.jsonAPI("GET", "/czds/requests/"+requestID, nil, request)
 	return request, err
@@ -173,6 +175,7 @@ func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
 
 // GetTLDStatus gets the current status of all TLDs and their ability to be requested
 func (c *Client) GetTLDStatus() ([]TLDStatus, error) {
+	c.v("GetTLDStatus")
 	requests := make([]TLDStatus, 0, 20)
 	err := c.jsonAPI("GET", "/czds/tlds", nil, &requests)
 	return requests, err
@@ -182,6 +185,7 @@ func (c *Client) GetTLDStatus() ([]TLDStatus, error) {
 // page "https://czds.icann.org/terms-and-conditions"
 // this is required to accept the terms and conditions when submitting a new request
 func (c *Client) GetTerms() (*Terms, error) {
+	c.v("GetTerms")
 	terms := new(Terms)
 	// this does not appear to need auth, but we auth regardless
 	err := c.jsonAPI("GET", "/czds/terms/condition", nil, terms)
@@ -190,6 +194,7 @@ func (c *Client) GetTerms() (*Terms, error) {
 
 // SubmitRequest submits a new request for access to new zones
 func (c *Client) SubmitRequest(request *RequestSubmission) error {
+	c.v("SubmitRequest request: %+v", request)
 	err := c.jsonAPI("POST", "/czds/requests/create", request, nil)
 	return err
 }
@@ -197,6 +202,7 @@ func (c *Client) SubmitRequest(request *RequestSubmission) error {
 // CancelRequest cancels a pre-existing request.
 // Can only cancel pending requests.
 func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, error) {
+	c.v("CancelRequest request: %+v", cancel)
 	request := new(RequestsInfo)
 	err := c.jsonAPI("POST", "/czds/requests/cancel", cancel, request)
 	return request, err
@@ -205,6 +211,7 @@ func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, 
 // RequestExtension submits a request to have the access extended.
 // Can only request extensions for requests expiring within 30 days.
 func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
+	c.v("RequestExtension request ID: %s", requestID)
 	request := new(RequestsInfo)
 	err := c.jsonAPI("POST", "/czds/requests/extension/"+requestID, emptyStruct, request)
 	return request, err
@@ -213,6 +220,7 @@ func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
 // DownloadAllRequests outputs the contents of the csv file downloaded by
 // the "Download All Requests" button on the CZDS portal to the provided output
 func (c *Client) DownloadAllRequests(output io.Writer) error {
+	c.v("DownloadAllRequests")
 	url := c.BaseURL + "/czds/requests/report"
 	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
@@ -234,6 +242,7 @@ func (c *Client) DownloadAllRequests(output io.Writer) error {
 // RequestTLDs is a helper function that requests access to the provided tlds with the provided reason
 // TLDs provided should be marked as able to request from GetTLDStatus()
 func (c *Client) RequestTLDs(tlds []string, reason string) error {
+	c.v("RequestTLDs TLDS: %+v", tlds)
 	// get terms
 	terms, err := c.GetTerms()
 	if err != nil {
@@ -252,6 +261,7 @@ func (c *Client) RequestTLDs(tlds []string, reason string) error {
 
 // RequestAllTLDs is a helper function to request access to all available TLDs with the provided reason
 func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
+	c.v("RequestAllTLDs")
 	// get available to request
 	status, err := c.GetTLDStatus()
 	if err != nil {
@@ -267,6 +277,7 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	}
 	// if none, return now
 	if len(requestTLDs) == 0 {
+		c.v("no TLDs to request")
 		return requestTLDs, nil
 	}
 
@@ -283,6 +294,7 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 		Reason:    reason,
 		TcVersion: terms.Version,
 	}
+	c.v("Requesting %d TLDs %+v", len(requestTLDs), requestTLDs)
 	err = c.SubmitRequest(request)
 	return requestTLDs, err
 }
@@ -290,19 +302,20 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 // ExtendTLD is a helper function that requests extensions to the provided tld
 // TLDs provided should be marked as Extensible from GetRequestInfo()
 func (c *Client) ExtendTLD(tld string) error {
-
-	zoneID, err := c.GetZoneRequestID(tld)
+	c.v("ExtendTLD: %q", tld)
+	requestID, err := c.GetZoneRequestID(tld)
 	if err != nil {
 		return fmt.Errorf("error GetZoneRequestID(%q): %w", tld, err)
 	}
+	c.v("ExtendTLD: tld: %q requestID: %q", tld, requestID)
 
-	info, err := c.RequestExtension(zoneID)
+	info, err := c.RequestExtension(requestID)
 	if err != nil {
 		return fmt.Errorf("RequestExtension(%q): %w", tld, err)
 	}
 
 	if !info.ExtensionInProcess {
-		return fmt.Errorf("error, zone request %q, %q: extension already in progress", tld, zoneID)
+		return fmt.Errorf("error, zone request %q, %q: extension already in progress", tld, requestID)
 	}
 
 	return nil
@@ -310,6 +323,7 @@ func (c *Client) ExtendTLD(tld string) error {
 
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
 func (c *Client) ExtendAllTLDs() ([]string, error) {
+	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
 	toExtend := make([]Request, 0, 10)
 
@@ -336,6 +350,7 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 
 	// get all pages of requests and check which ones are extendable
 	for {
+		c.v("ExtendAllTLDs requesting %d requests on page %d", filter.Pagination.Size, filter.Pagination.Page)
 		req, err := c.GetRequests(&filter)
 		if err != nil {
 			return tlds, err
@@ -356,6 +371,7 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 	}
 
 	// perform extend
+	c.v("requesting extensions for %d tlds: %+v", len(toExtend), toExtend)
 	for _, r := range toExtend {
 		_, err := c.RequestExtension(r.RequestID)
 		if err != nil {

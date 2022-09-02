@@ -40,6 +40,7 @@ type Client struct {
 	authExp    time.Time
 	Creds      Credentials
 	authMutex  sync.Mutex
+	log        Logger
 }
 
 // Credentials used by the czds.Client
@@ -78,10 +79,12 @@ func (c *Client) checkAuth() error {
 	defer c.authMutex.Unlock()
 	if c.auth.AccessToken == "" {
 		// no token yet
+		c.v("no auth token")
 		return c.Authenticate()
 	}
 	if time.Now().After(c.authExp) {
 		// token expired, renew
+		c.v("auth token expired")
 		return c.Authenticate()
 	}
 	return nil
@@ -97,6 +100,7 @@ func (c *Client) httpClient() *http.Client {
 // apiRequest makes a request to the client's API endpoint
 // TODO add optional context to requests
 func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
+	c.v("HTTP API Request: %s %q", method, url)
 	if auth {
 		err := c.checkAuth()
 		if err != nil {
@@ -114,14 +118,15 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 			return nil, err
 		}
 		if request != nil {
-			req.Header.Add("Content-Type", "application/json")
+			req.Header.Set("Content-Type", "application/json")
 		}
-		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 
 		resp, err = c.httpClient().Do(req)
 		if err != nil {
 			err = fmt.Errorf("error on request [%d/%d] %s, got error %w: %+v", try, totalTrys, url, err, resp)
+			c.v("HTTP API Request error: %s", err)
 		} else {
 			return resp, nil
 		}
@@ -166,7 +171,7 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 			if jsonError != nil {
 				return fmt.Errorf("error decoding json %w on errored request: %s", jsonError, err.Error())
 			}
-			err = fmt.Errorf("%w HTTPStatus: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
+			err = fmt.Errorf("%w HTTP Status: %d Message: %q", err, errorResp.HTTPStatus, errorResp.Message)
 		}
 		return err
 	}
@@ -184,7 +189,7 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 // Authenticate tests the client's credentials and gets an authentication token from the server
 // calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
 func (c *Client) Authenticate() error {
-
+	c.v("authenticating")
 	authResp := authResponse{}
 	err := c.jsonRequest(false, "POST", c.AuthURL, c.Creds, &authResp)
 	if err != nil {
@@ -212,6 +217,7 @@ func (ar *authResponse) getExpiration() (time.Time, error) {
 
 // GetZoneRequestID returns the most request RequestID for the given zone
 func (c *Client) GetZoneRequestID(zone string) (string, error) {
+	c.v("GetZoneRequestID: %q", zone)
 	zone = strings.ToLower(zone)
 
 	// given a RequestsResponse, return the request for the provided zone if found, otherwise nil
@@ -247,6 +253,7 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	// if zone is not found in requests, and there are more requests to get, iterate through them
 	for request == nil && len(requests.Requests) != 0 {
 		filter.Pagination.Page++
+		c.v("GetZoneRequestID: zone %q not found yet, requesting page %d", zone, filter.Pagination.Page)
 		requests, err = c.GetRequests(&filter)
 		if err != nil {
 			return "", err
@@ -264,6 +271,7 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 // status should be one of the constant czds.Status* strings
 // warning: for large number of results, may be slow
 func (c *Client) GetAllRequests(status string) ([]Request, error) {
+	c.v("GetAllRequests status: %q", status)
 	const pageSize = 100
 	filter := RequestsFilter{
 		Status: status,
@@ -279,12 +287,14 @@ func (c *Client) GetAllRequests(status string) ([]Request, error) {
 	}
 
 	out := make([]Request, 0, 100)
+	c.v("GetAllRequests status: %q, page %d", status, filter.Pagination.Page)
 	requests, err := c.GetRequests(&filter)
 	if err != nil {
 		return out, err
 	}
 
 	for len(requests.Requests) != 0 {
+		c.v("GetAllRequests status: %q, page %d", status, filter.Pagination.Page)
 		out = append(out, requests.Requests...)
 		filter.Pagination.Page++
 		requests, err = c.GetRequests(&filter)
