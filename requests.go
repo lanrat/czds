@@ -323,6 +323,7 @@ func (c *Client) ExtendTLD(tld string) error {
 
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
 func (c *Client) ExtendAllTLDs() ([]string, error) {
+	const expiryDateThreshold = 60
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
 	toExtend := make([]Request, 0, 10)
@@ -349,13 +350,22 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 	}
 
 	// get all pages of requests and check which ones are extendable
-	for {
+	morePages := true
+	for morePages {
 		c.v("ExtendAllTLDs requesting %d requests on page %d", filter.Pagination.Size, filter.Pagination.Page)
 		req, err := c.GetRequests(&filter)
 		if err != nil {
 			return tlds, err
 		}
 		for _, r := range req.Requests {
+			// check for break early
+			if expiryDateThreshold > 0 && r.Expired.After(time.Now().AddDate(0, 0, expiryDateThreshold)) {
+				c.v("request %q: %q expires on %s, > %d days threshold, looking no further", r.TLD, r.RequestID, r.Expired.Format(time.ANSIC), expiryDateThreshold)
+				morePages = false
+				break
+			}
+
+			// get request info
 			ext, err := isExtensible(r.RequestID)
 			if err != nil {
 				return tlds, err
@@ -366,7 +376,7 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 		}
 		filter.Pagination.Page++
 		if len(req.Requests) == 0 {
-			break
+			morePages = false
 		}
 	}
 
