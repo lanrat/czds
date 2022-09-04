@@ -71,34 +71,6 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
-## CZDS-REPORT
-
-Download the CSV report for current zone status.
-
-### Usage
-
-```text
-Usage of czds-report:
-  -file string
-        filename to save report to, '-' for stdout (default "report.csv")
-  -password string
-        password to authenticate with
-  -username string
-        username to authenticate with
-  -verbose
-        enable verbose logging
-  -version
-        print version and exit
-```
-
-### Example
-
-```text
-$ ./czds-report -username "$USERNAME" -password "$PASSWORD" -verbose -file report.csv
-2019/02/02 17:43:37 Authenticating to https://account-api.icann.org/api/authenticate
-2019/02/02 17:43:38 Saving to report.csv
-```
-
 ## CZDS-REQUEST
 
 Submit a new zone request or modify an existing CZDS request. Be sure to view and accept the terms and conditions with the `-terms` flag.
@@ -162,11 +134,12 @@ By default czds-requests prints high-level information about all czds requests, 
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```text
-Usage of czds-status:
   -id string
         ID of specific zone request to lookup, defaults to printing all
   -password string
         password to authenticate with
+  -report string
+        filename to save report CSV to, '-' for stdout
   -username string
         username to authenticate with
   -verbose
