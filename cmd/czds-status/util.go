@@ -12,7 +12,7 @@ func v(format string, v ...interface{}) {
 }
 
 func expiredTime(t time.Time) string {
-	if t.Unix() > 0 {
+	if !t.IsZero() {
 		return t.Format(time.ANSIC)
 	}
 	return ""
