@@ -271,7 +271,7 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	requestTLDs := make([]string, 0, 10)
 	for _, tld := range status {
 		switch tld.CurrentStatus {
-		case StatusAvailable, StatusExpired, StatusDenied, StatusRevoked:
+		case StatusAvailable, StatusCanceled, StatusDenied, StatusExpired, StatusRevoked:
 			requestTLDs = append(requestTLDs, tld.TLD)
 		}
 	}
