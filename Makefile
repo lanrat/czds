@@ -1,4 +1,4 @@
-BIN_SOURCES := $(shell find cmd/$(subst bin/,,$@) -maxdepth 1 -type f -name "*.go")
+BIN_SOURCES = $(shell find cmd/$(subst bin/,,$@) -maxdepth 1 -type f -name "*.go")
 ALL_SOURCES := $(shell find . -type f -name '*.go')
 MODULE_SOURCES := $(shell find . -type f -name '*.go' ! -path "./cmd/*")
 CMDS := $(shell ls cmd/)
