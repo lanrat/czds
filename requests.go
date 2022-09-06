@@ -49,6 +49,10 @@ const (
 	StatusRevoked   = "revoked" // unverified
 )
 
+// number of days into the future to check zones for expiration extensions.
+// 0 disables the check
+const expiryDateThreshold = 120
+
 // used in RequestExtension
 var emptyStruct, _ = json.Marshal(make(map[int]int))
 
@@ -323,7 +327,6 @@ func (c *Client) ExtendTLD(tld string) error {
 
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
 func (c *Client) ExtendAllTLDs() ([]string, error) {
-	const expiryDateThreshold = 60
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
 	toExtend := make([]Request, 0, 10)
