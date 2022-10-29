@@ -3,10 +3,12 @@ FROM golang:alpine AS czds-build-env
 RUN apk update && apk add --no-cache make git
 
 WORKDIR /go/app/
-COPY . .
-RUN make deps
-RUN make -j $(nproc)
 
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN make -j $(nproc)
 
 # final stage
 FROM alpine

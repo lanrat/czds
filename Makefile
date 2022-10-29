@@ -25,7 +25,7 @@ docker: Dockerfile Makefile $(SOURCES)
 	docker build -t $(DOCKER_REPO) -t $(DOCKER_REPO):$(GIT_VERSION) .
 
 update-deps: deps
-	GOPROXY=direct go get -u all
+	GOPROXY=direct go get -u ./...
 	go mod tidy
 
 deps: go.mod
