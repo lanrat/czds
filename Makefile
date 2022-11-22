@@ -9,7 +9,7 @@ DOCKER_REPO := "lanrat/czds"
 DOCKER_IMAGES = $(shell docker image ls --format "{{.Repository}}:{{.Tag}}" $(DOCKER_REPO))
 
 # creates static binaries
-CC = CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -a -installsuffix cgo
+CC = CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -installsuffix cgo
 
 .PHONY: all fmt docker clean install deps update-deps $(CMDS) check release
 
