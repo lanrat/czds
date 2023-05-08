@@ -9,7 +9,7 @@ DOCKER_REPO := "lanrat/czds"
 DOCKER_IMAGES = $(shell docker image ls --format "{{.Repository}}:{{.Tag}}" $(DOCKER_REPO))
 
 # creates static binaries
-CC = CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -a -installsuffix cgo
+CC = CGO_ENABLED=0 go build -trimpath -ldflags "-w -s -X main.version=$(GIT_VERSION)" -installsuffix cgo
 
 .PHONY: all fmt docker clean install deps update-deps $(CMDS) check release
 
@@ -35,9 +35,13 @@ deps: go.mod
 fmt:
 	gofmt -s -w -l .
 
-check:
-	golangci-lint run --exclude-use-default || true
-	staticcheck -checks all ./...
+lint: | lint-staticcheck lint-golangci
+
+lint-staticcheck:
+	staticcheck -f stylish -checks all ./...
+
+lint-golangci:
+	golangci-lint run
 
 install: $(SOURCES)
 	go install $(CMDS)
