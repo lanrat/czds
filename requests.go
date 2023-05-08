@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// cSpell:ignore ftpips ulable tlds
-
 // Filters for RequestsFilter.Status
 // Statuses for RequestStatus.Status
 const (
@@ -35,6 +33,7 @@ const (
 	SortByLastUpdated = "last_updated"
 	SortByExpiration  = "expired"
 	SortByCreated     = "created"
+	SortByAutoRenew   = "auto_renew"
 )
 
 // Status from TLDStatus.CurrentStatus and RequestsInfo.Status
@@ -86,6 +85,7 @@ type Request struct {
 	LastUpdated time.Time `json:"last_updated"`
 	Expired     time.Time `json:"expired"` // Note: epoch 0 means no expiration set
 	SFTP        bool      `json:"sftp"`
+	AutoRenew   bool      `json:"auto_renew"`
 }
 
 // RequestsResponse holds Requests from from GetRequests() and total number of requests that match the query but may not be returned due to pagination

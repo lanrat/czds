@@ -15,9 +15,6 @@ import (
 	"github.com/lanrat/czds"
 )
 
-// cSpell:words redownload redownloading
-// cSpell:ignore urlname
-
 // flags
 var (
 	username    = flag.String("username", "", "username to authenticate with")

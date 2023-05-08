@@ -10,8 +10,6 @@ import (
 	"github.com/lanrat/czds"
 )
 
-// cSpell:ignore tlds
-
 // flags
 var (
 	username    = flag.String("username", "", "username to authenticate with")
