@@ -265,7 +265,13 @@ func (c *Client) RequestTLDs(tlds []string, reason string) error {
 
 // RequestAllTLDs is a helper function to request access to all available TLDs with the provided reason
 func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
+	return c.RequestAllTLDsExcept(reason, nil)
+}
+
+// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason skipping over the TLDs in except
+func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string, error) {
 	c.v("RequestAllTLDs")
+	exceptMap := slice2LowerMap(except)
 	// get available to request
 	status, err := c.GetTLDStatus()
 	if err != nil {
@@ -274,6 +280,10 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	// check to see if any available to request
 	requestTLDs := make([]string, 0, 10)
 	for _, tld := range status {
+		if exceptMap[tld.TLD] {
+			// skip over excluded TLDs
+			continue
+		}
 		switch tld.CurrentStatus {
 		case StatusAvailable, StatusCanceled, StatusDenied, StatusExpired, StatusRevoked:
 			requestTLDs = append(requestTLDs, tld.TLD)
@@ -327,9 +337,15 @@ func (c *Client) ExtendTLD(tld string) error {
 
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
 func (c *Client) ExtendAllTLDs() ([]string, error) {
+	return c.ExtendAllTLDsExcept(nil)
+}
+
+// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable excluding any in except
+func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
 	toExtend := make([]Request, 0, 10)
+	exceptMap := slice2LowerMap(except)
 
 	// get all TLDs to extend
 	const pageSize = 100
@@ -386,6 +402,10 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 	// perform extend
 	c.v("requesting extensions for %d tlds: %+v", len(toExtend), toExtend)
 	for _, r := range toExtend {
+		if exceptMap[r.TLD] {
+			// skip over excluded TLDs
+			continue
+		}
 		_, err := c.RequestExtension(r.RequestID)
 		if err != nil {
 			return tlds, err

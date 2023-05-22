@@ -81,6 +81,8 @@ Submit a new zone request or modify an existing CZDS request. Be sure to view an
 Usage of czds-request:
   -cancel string
         comma separated list of zones to cancel outstanding requests for
+  -exclude string
+        comma separated list of zones to exclude from request-all or extend-all
   -extend string
         comma separated list of zones to request extensions
   -extend-all
@@ -103,6 +105,7 @@ Usage of czds-request:
         enable verbose logging
   -version
         print version and exit
+```
 
 ### Example
 

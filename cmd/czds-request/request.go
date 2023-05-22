@@ -22,6 +22,7 @@ var (
 	status      = flag.Bool("status", false, "print status of zones")
 	extendTLDs  = flag.String("extend", "", "comma separated list of zones to request extensions")
 	extendAll   = flag.Bool("extend-all", false, "extend all possible zones")
+	exclude     = flag.String("exclude", "", "comma separated list of zones to exclude from request-all or extend-all")
 	cancelTLDs  = flag.String("cancel", "", "comma separated list of zones to cancel outstanding requests for")
 	showVersion = flag.Bool("version", false, "print version and exit")
 )
@@ -68,6 +69,8 @@ func main() {
 		log.Fatal("Nothing to do!")
 	}
 
+	excludeList := strings.Split(*exclude, ",")
+
 	client = czds.NewClient(*username, *password)
 	if *verbose {
 		client.SetLogger(log.Default())
@@ -110,7 +113,7 @@ func main() {
 		var requestedTLDs []string
 		if *requestAll {
 			v("Requesting all TLDs")
-			requestedTLDs, err = client.RequestAllTLDs(*reason)
+			requestedTLDs, err = client.RequestAllTLDsExcept(*reason, excludeList)
 		} else {
 			tlds := strings.Split(*requestTLDs, ",")
 			v("Requesting %v", tlds)
@@ -130,7 +133,7 @@ func main() {
 		var extendedTLDs []string
 		if *extendAll {
 			v("Requesting extension for all TLDs")
-			extendedTLDs, err = client.ExtendAllTLDs()
+			extendedTLDs, err = client.ExtendAllTLDsExcept(excludeList)
 		} else {
 			tlds := strings.Split(*extendTLDs, ",")
 			for _, tld := range tlds {
