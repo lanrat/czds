@@ -13,12 +13,13 @@ import (
 	"time"
 
 	"github.com/lanrat/czds"
+	"github.com/jschauma/getpass"
 )
 
 // flags
 var (
 	username    = flag.String("username", "", "username to authenticate with")
-	password    = flag.String("password", "", "password to authenticate with")
+	password    = flag.String("password", "", "password source (default: prompt on tty; other options: env:var, file:path, pass:password)")
 	parallel    = flag.Uint("parallel", 5, "number of zones to download in parallel")
 	outDir      = flag.String("out", ".", "path to save downloaded zones to")
 	urlName     = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
@@ -68,8 +69,7 @@ func checkFlags() {
 		flagError = true
 	}
 	if len(*password) == 0 {
-		log.Printf("must pass password")
-		flagError = true
+		*password = "tty"
 	}
 	if flagError {
 		flag.PrintDefaults()
@@ -80,14 +80,19 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
-	client = czds.NewClient(*username, *password)
+	p, err := getpass.Getpass(*password)
+	if err != nil {
+		log.Fatal("Unable to get password from user: ", err)
+	}
+
+	client = czds.NewClient(*username, p)
 	if *verbose {
 		client.SetLogger(log.Default())
 	}
 
 	// validate credentials
 	v("Authenticating to %s", client.AuthURL)
-	err := client.Authenticate()
+	err = client.Authenticate()
 	if err != nil {
 		log.Fatal(err)
 	}
