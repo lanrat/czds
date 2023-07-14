@@ -24,6 +24,7 @@ var (
 	urlName     = flag.Bool("urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	force       = flag.Bool("force", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
 	redownload  = flag.Bool("redownload", false, "redownload zones that are newer on the remote server than local copy")
+	exclude     = flag.String("exclude", "", "don't fetch these zones")
 	verbose     = flag.Bool("verbose", false, "enable verbose logging")
 	retries     = flag.Uint("retries", 3, "max retry attempts per zone file download")
 	zone        = flag.String("zone", "", "comma separated list of zones to download, defaults to all")
@@ -71,6 +72,10 @@ func checkFlags() {
 		log.Printf("must pass password")
 		flagError = true
 	}
+	if len(*zone) != 0 && len(*exclude) != 0 {
+		log.Printf("'-zone' and '-exclude' cannot be combined")
+		flagError = true
+	}
 	if flagError {
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -113,6 +118,9 @@ func main() {
 		downloads, err = client.GetLinks()
 		if err != nil {
 			log.Fatal(err)
+		}
+		if len(*exclude) != 0 {
+			downloads = pruneLinks(downloads)
 		}
 		v("received %d zone links", len(downloads))
 	} else {
@@ -252,4 +260,22 @@ func shuffle(src []string) []string {
 		final[v] = src[i]
 	}
 	return final
+}
+
+func pruneLinks(downloads []string) []string {
+	newlist := []string{}
+	for _, u := range downloads {
+		found := false
+		for _, e := range strings.Split(*exclude, ",") {
+			sfx := fmt.Sprintf("%s.zone", e)
+			if strings.HasSuffix(u, sfx) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			newlist = append(newlist, u)
+		}
+	}
+	return newlist
 }

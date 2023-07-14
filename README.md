@@ -29,6 +29,8 @@ Implements a client for the officially documented [CZDS REST API](https://github
 
 ```console
 Usage of czds-dl:
+  -exclude string
+        don't fetch these zones
   -force
         force redownloading the zone even if it already exists on local disk with same size and modification date
   -out string
