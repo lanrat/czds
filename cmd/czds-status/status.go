@@ -14,6 +14,7 @@ import (
 var (
 	username    = flag.String("username", "", "username to authenticate with")
 	password    = flag.String("password", "", "password to authenticate with")
+	passin      = flag.String("passin", "", "password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)")
 	verbose     = flag.Bool("verbose", false, "enable verbose logging")
 	id          = flag.String("id", "", "ID of specific zone request to lookup, defaults to printing all")
 	zone        = flag.String("zone", "", "same as -id, but prints the request by zone name")
@@ -37,8 +38,8 @@ func checkFlags() {
 		log.Printf("must pass username")
 		flagError = true
 	}
-	if len(*password) == 0 {
-		log.Printf("must pass password")
+	if len(*password) == 0 && len(*passin) == 0 {
+		log.Printf("must pass either 'password' or 'passin'")
 		flagError = true
 	}
 	if (len(*report) > 0) && ((*id != "") || (*zone != "")) {
@@ -54,7 +55,16 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
-	client = czds.NewClient(*username, *password)
+	p := *password
+	if len(p) == 0 {
+		pass, err := czds.Getpass(*passin)
+		if err != nil {
+			log.Fatal("Unable to get password from user: ", err)
+		}
+		p = pass
+	}
+
+	client = czds.NewClient(*username, p)
 	if *verbose {
 		client.SetLogger(log.Default())
 	}

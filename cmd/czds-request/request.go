@@ -14,6 +14,7 @@ import (
 var (
 	username    = flag.String("username", "", "username to authenticate with")
 	password    = flag.String("password", "", "password to authenticate with")
+	passin      = flag.String("passin", "", "password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)")
 	verbose     = flag.Bool("verbose", false, "enable verbose logging")
 	reason      = flag.String("reason", "", "reason to request zone access")
 	printTerms  = flag.Bool("terms", false, "print CZDS Terms & Conditions")
@@ -49,8 +50,8 @@ func checkFlags() {
 		log.Printf("must pass username")
 		flagError = true
 	}
-	if len(*password) == 0 {
-		log.Printf("must pass password")
+	if len(*password) == 0 && len(*passin) == 0 {
+		log.Printf("must pass either 'password' or 'passin'")
 		flagError = true
 	}
 	if flagError {
@@ -62,6 +63,15 @@ func checkFlags() {
 func main() {
 	checkFlags()
 
+	p := *password
+	if len(p) == 0 {
+		pass, err := czds.Getpass(*passin)
+		if err != nil {
+			log.Fatal("Unable to get password from user: ", err)
+		}
+		p = pass
+	}
+
 	doRequest := (*requestAll || len(*requestTLDs) > 0)
 	doExtend := (*extendAll || len(*extendTLDs) > 0)
 	doCancel := len(*extendTLDs) > 0
@@ -71,7 +81,7 @@ func main() {
 
 	excludeList := strings.Split(*exclude, ",")
 
-	client = czds.NewClient(*username, *password)
+	client = czds.NewClient(*username, p)
 	if *verbose {
 		client.SetLogger(log.Default())
 	}
