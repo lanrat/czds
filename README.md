@@ -35,6 +35,8 @@ Usage of czds-dl:
         path to save downloaded zones to (default ".")
   -parallel uint
         number of zones to download in parallel (default 5)
+  -passin
+        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -quiet
@@ -87,6 +89,8 @@ Usage of czds-request:
         comma separated list of zones to request extensions
   -extend-all
         extend all possible zones
+  -passin
+        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -reason string
@@ -109,22 +113,26 @@ Usage of czds-request:
 
 ### Example
 
-View zones able to be requested
+View zones able to be requested, prompting the user
+interactively for their password:
 
 ```text
-./czds-request -username "$USERNAME" -password "$PASSWORD" -status  | grep -v pending | grep -v approved
+./czds-request -username "$USERNAME" -passin "tty" -status  | grep -v pending | grep -v approved
+Password:
 ```
 
-Request access to new zones
+Request access to new zones, reading the user's
+password from the file `~/.czds.pass`:
 
 ```text
-./czds-request -username "$USERNAME" -password "$PASSWORD" -request "red,blue,xyz" -reason "$REASON"
+./czds-request -username "$USERNAME" -passin "file:~/.czds.pass" -request "red,blue,xyz" -reason "$REASON"
 ```
 
-Request access to all zones
+Request access to all zones:
 
 ```text
-./czds-request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
+./czds-request -username "$USERNAME" -passin "tty" -request-all -reason "$REASON"
+Password:
 ```
 
 ## CZDS-STATUS
@@ -139,6 +147,8 @@ Detailed information about a particular zone can be displayed with the `-zone` o
 ```text
   -id string
         ID of specific zone request to lookup, defaults to printing all
+  -passin
+        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -report string
