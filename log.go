@@ -5,8 +5,8 @@ type Logger interface {
 	Printf(format string, v ...interface{})
 }
 
-// SetLogger enables verbose printing for most API calls with the provided logger
-// defaults to nil/off.
+// SetLogger enables verbose printing for most API calls with the provided logger.
+// Defaults to nil/off.
 func (c *Client) SetLogger(l Logger) {
 	c.log = l
 }

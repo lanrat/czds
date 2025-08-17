@@ -77,7 +77,7 @@ import (
 //                 used where security is not important.
 //
 //  tty:prompt     This is the default: `Getpass` will prompt the user on
-//                 the controlling tty using  the provided `prompt`.  If no
+//                 the controlling tty using the provided `prompt`.  If no
 //                 `prompt` is provided, then `Getpass` will use "Password: ".
 //
 // This function is variadic purely so that you can invoke it without any
@@ -128,8 +128,6 @@ func Getpass(passfrom ...string) (pass string, err error) {
 	default:
 		return "", errors.New(errMsg)
 	}
-
-	return pass, nil
 }
 
 func getpassFromCommand(command string) (pass string, err error) {
@@ -180,7 +178,9 @@ func getpassFromFile(fname string) (pass string, err error) {
 		errMsg := fmt.Sprintf("Unable to open '%s': %v", fname, err)
 		return "", errors.New(errMsg)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		pass = scanner.Text()
@@ -224,7 +224,9 @@ func getpassFromUser(prompt string) (pass string, err error) {
 		return "", err
 	}
 
-	fmt.Fprintf(dev_tty, prompt)
+	if _, err := fmt.Fprint(dev_tty, prompt); err != nil {
+		return "", err
+	}
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -252,7 +254,9 @@ func getpassFromUser(prompt string) (pass string, err error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(dev_tty, "\n")
+	if _, err := fmt.Fprintf(dev_tty, "\n"); err != nil {
+		return "", err
+	}
 
 	return string(pass[:len(pass)-1]), nil
 }

@@ -1,4 +1,4 @@
-// Package czds implementing a client to the CZDS REST API using both the documented and undocumented API endpoints
+// Package czds implements a client to the CZDS REST API using both the documented and undocumented API endpoints.
 package czds
 
 import (
@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	// AuthURL production url endpoint
+	// AuthURL is the production URL endpoint for authentication
 	AuthURL = "https://account-api.icann.org/api/authenticate"
-	// BaseURL production url endpoint
+	// BaseURL is the production URL endpoint for the API
 	BaseURL = "https://czds-api.icann.org"
 
-	// TestAuthURL testing url endpoint
+	// TestAuthURL is the testing URL endpoint for authentication
 	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
-	// TestBaseURL testing url endpoint
+	// TestBaseURL is the testing URL endpoint for the API
 	TestBaseURL = "https://czds-api-test.icann.org"
 )
 
@@ -72,9 +72,9 @@ func NewClient(username, password string) *Client {
 	return client
 }
 
-// this function does NOT make network requests if the auth is valid
+// checkAuth does NOT make network requests if the auth is valid
 func (c *Client) checkAuth() error {
-	// used a mutex to prevent multiple threads from authenticating at the same time
+	// uses a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
 	defer c.authMutex.Unlock()
 	if c.auth.AccessToken == "" {
@@ -98,7 +98,7 @@ func (c *Client) httpClient() *http.Client {
 }
 
 // apiRequest makes a request to the client's API endpoint
-// TODO add optional context to requests
+// TODO: Add optional context to requests for better cancellation support
 func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
 	c.v("HTTP API Request: %s %q", method, url)
 	if auth {
@@ -140,7 +140,7 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	return resp, err
 }
 
-// jsonAPI performs an authenticated json API request
+// jsonAPI performs an authenticated JSON API request
 func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
 	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
 }
@@ -160,7 +160,11 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.v("Error closing response body: %v", err)
+		}
+	}()
 
 	// got an error, decode it
 	if resp.StatusCode != http.StatusOK {
@@ -186,8 +190,8 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 	return nil
 }
 
-// Authenticate tests the client's credentials and gets an authentication token from the server
-// calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
+// Authenticate tests the client's credentials and gets an authentication token from the server.
+// Calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
 func (c *Client) Authenticate() error {
 	c.v("authenticating")
 	authResp := authResponse{}
@@ -215,7 +219,7 @@ func (ar *authResponse) getExpiration() (time.Time, error) {
 	return exp, err
 }
 
-// GetZoneRequestID returns the most request RequestID for the given zone
+// GetZoneRequestID returns the most recent RequestID for the given zone
 func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	c.v("GetZoneRequestID: %q", zone)
 	zone = strings.ToLower(zone)
@@ -267,9 +271,9 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	return request.RequestID, nil
 }
 
-// GetAllRequests returns the request information for all requests with the given status
-// status should be one of the constant czds.Status* strings
-// warning: for large number of results, may be slow
+// GetAllRequests returns the request information for all requests with the given status.
+// Status should be one of the constant czds.Status* strings.
+// Warning: for a large number of results, may be slow.
 func (c *Client) GetAllRequests(status string) ([]Request, error) {
 	c.v("GetAllRequests status: %q", status)
 	const pageSize = 100

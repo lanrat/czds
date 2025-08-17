@@ -1,4 +1,4 @@
-// Package jwt defines the JWT types used by the czds authentication API
+// Package jwt defines the JWT types used by the CZDS authentication API.
 package jwt
 
 import (
@@ -8,20 +8,20 @@ import (
 	"strings"
 )
 
-// Token stores a JWT token
+// Token stores a JWT token.
 type Token struct {
 	Header    Header
 	Data      Data
 	Signature []byte
 }
 
-// Header for Token
+// Header represents the JWT header.
 type Header struct {
 	Kid string `json:"kid"`
 	Alg string `json:"alg"`
 }
 
-// Data for token
+// Data represents the JWT payload data.
 type Data struct {
 	Ver        int64    `json:"ver"`
 	Jti        string   `json:"jti"`
@@ -38,7 +38,7 @@ type Data struct {
 	Email      string   `json:"email"`
 }
 
-// DecodeJWT given a JWT encoded string, return the decoded Token
+// DecodeJWT decodes a JWT encoded string and returns the decoded Token.
 func DecodeJWT(jwtStr string) (*Token, error) {
 	token := &Token{}
 	parts := strings.Split(jwtStr, ".")

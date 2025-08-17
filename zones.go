@@ -9,23 +9,26 @@ import (
 	"time"
 )
 
-// DownloadInfo information from the HEAD request from a DownloadLink
+// DownloadInfo contains information from the HEAD request from a DownloadLink
 type DownloadInfo struct {
 	ContentLength int64
 	LastModified  time.Time
 	Filename      string
 }
 
-// DownloadZoneToWriter is analogous to DownloadZone but instead of writing it to a file, it will
-// write it to a provided io.Writer. It returns the number of bytes written to dest and any error
-// that was encountered.
+// DownloadZoneToWriter is analogous to DownloadZone but writes to a provided io.Writer instead of a file.
+// It returns the number of bytes written to dest and any error that was encountered.
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
 	c.v("downloading zone from %q", url)
 	resp, err := c.apiRequest(true, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.v("Error closing response body: %v", err)
+		}
+	}()
 	w, err := io.Copy(dest, resp.Body)
 	if err != nil {
 		return w, err
@@ -38,30 +41,38 @@ func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error)
 	return w, nil
 }
 
-// DownloadZone provided the zone download URL retrieved from GetLinks() downloads the zone file and
-// saves it to local disk at destinationPath
+// DownloadZone downloads the zone file from the given zone download URL (retrieved from GetLinks) and
+// saves it to the specified destination path.
 func (c *Client) DownloadZone(url, destinationPath string) error {
 	// start the file download
 	file, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			c.v("Error closing file: %v", err)
+		}
+	}()
 
 	n, err := c.DownloadZoneToWriter(url, file)
 	if err != nil {
-		os.Remove(destinationPath)
+		if removeErr := os.Remove(destinationPath); removeErr != nil {
+			c.v("Error removing file %s: %v", destinationPath, removeErr)
+		}
 		return err
 	}
 	if n == 0 {
-		os.Remove(destinationPath)
+		if removeErr := os.Remove(destinationPath); removeErr != nil {
+			c.v("Error removing file %s: %v", destinationPath, removeErr)
+		}
 		return fmt.Errorf("%s was empty", destinationPath)
 	}
 
 	return nil
 }
 
-// GetDownloadInfo Performs a HEAD request to the zone at url and populates a DownloadInfo struct
+// GetDownloadInfo performs a HEAD request to the zone at url and populates a DownloadInfo struct
 // with the information returned by the headers
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	c.v("GetDownloadInfo for %q", url)
@@ -69,7 +80,11 @@ func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.v("Error closing response body: %v", err)
+		}
+	}()
 
 	lastModifiedStr := resp.Header.Get("Last-Modified")
 	if lastModifiedStr == "" {
@@ -103,7 +118,7 @@ func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	return info, nil
 }
 
-// GetLinks returns the DownloadLinks available to the authenticated user
+// GetLinks returns the download links available to the authenticated user.
 func (c *Client) GetLinks() ([]string, error) {
 	links := make([]string, 0, 10)
 	c.v("GetLinks called")

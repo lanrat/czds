@@ -79,16 +79,16 @@ type RequestsPagination struct {
 type Request struct {
 	RequestID   string    `json:"requestId"`
 	TLD         string    `json:"tld"`
-	ULabel      string    `json:"ulable"` // UTF-8 decoded punycode, looks like API has a typo
-	Status      string    `json:"status"` // should be set to one of the Request* constants
+	ULabel      string    `json:"ulable"` // ULabel contains UTF-8 decoded punycode (API appears to have a typo in the field name)
+	Status      string    `json:"status"` // Status should be set to one of the Request* constants
 	Created     time.Time `json:"created"`
 	LastUpdated time.Time `json:"last_updated"`
-	Expired     time.Time `json:"expired"` // Note: epoch 0 means no expiration set
+	Expired     time.Time `json:"expired"` // Expired time; epoch 0 means no expiration set
 	SFTP        bool      `json:"sftp"`
 	AutoRenew   bool      `json:"auto_renew"`
 }
 
-// RequestsResponse holds Requests from from GetRequests() and total number of requests that match the query but may not be returned due to pagination
+// RequestsResponse holds Requests from GetRequests() and total number of requests that match the query but may not be returned due to pagination
 type RequestsResponse struct {
 	Requests      []Request `json:"requests"`
 	TotalRequests int64     `json:"totalRequests"`
@@ -97,20 +97,20 @@ type RequestsResponse struct {
 // TLDStatus is information about a particular TLD returned from GetTLDStatus() or included in RequestsInfo
 type TLDStatus struct {
 	TLD           string `json:"tld"`
-	ULabel        string `json:"ulable"`        // UTF-8 decoded punycode, looks like API has a typo
-	CurrentStatus string `json:"currentStatus"` // should be set to one of the Status* constants
+	ULabel        string `json:"ulable"`        // ULabel contains UTF-8 decoded punycode (API appears to have a typo in the field name)
+	CurrentStatus string `json:"currentStatus"` // CurrentStatus should be set to one of the Status* constants
 	SFTP          bool   `json:"sftp"`
 }
 
-// HistoryEntry contains a timestamp and description of action that happened for a RequestsInfo
-// For example: requested, expired, approved, etc..
+// HistoryEntry contains a timestamp and description of an action that happened for a RequestsInfo.
+// For example: requested, expired, approved, etc.
 type HistoryEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 	Action    string    `json:"action"`
 	Comment   string    `json:"comment"`
 }
 
-// FtpDetails contains FTP information for RequestsInfo
+// FtpDetails contains FTP information for RequestsInfo.
 type FtpDetails struct {
 	PrivateDataError bool `json:"privateDataError"`
 }
@@ -130,7 +130,7 @@ type RequestsInfo struct {
 	Extensible         bool           `json:"extensible"`
 	ExtensionInProcess bool           `json:"extensionInProcess"`
 	AutoRenew          bool           `json:"auto_renew"`
-	Expired            time.Time      `json:"expired"` // Note: epoch 0 means no expiration set
+	Expired            time.Time      `json:"expired"` // Note: epoch 0 means no expiration set.
 	History            []HistoryEntry `json:"history"`
 	FtpDetails         *FtpDetails    `json:"ftpDetails"`
 	PrivateDataError   bool           `json:"privateDataError"`
@@ -153,13 +153,13 @@ type Terms struct {
 	Created    time.Time `json:"created"`
 }
 
-// CancelRequestSubmission Request cancellation arguments passed to CancelRequest()
+// CancelRequestSubmission contains request cancellation arguments passed to CancelRequest()
 type CancelRequestSubmission struct {
 	RequestID string `json:"integrationId"` // This is effectively 'requestId'
 	TLDName   string `json:"tldName"`
 }
 
-// GetRequests searches for the status of zones requests as seen on the
+// GetRequests searches for the status of zone requests as seen on the
 // CZDS dashboard page "https://czds.icann.org/zone-requests/all"
 func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) {
 	c.v("GetRequests filter: %+v", filter)
@@ -221,7 +221,7 @@ func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
 	return request, err
 }
 
-// DownloadAllRequests outputs the contents of the csv file downloaded by
+// DownloadAllRequests outputs the contents of the CSV file downloaded by
 // the "Download All Requests" button on the CZDS portal to the provided output
 func (c *Client) DownloadAllRequests(output io.Writer) error {
 	c.v("DownloadAllRequests")
@@ -230,7 +230,11 @@ func (c *Client) DownloadAllRequests(output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.v("Error closing response body: %v", err)
+		}
+	}()
 
 	n, err := io.Copy(output, resp.Body)
 	if err != nil {
@@ -243,7 +247,7 @@ func (c *Client) DownloadAllRequests(output io.Writer) error {
 	return nil
 }
 
-// RequestTLDs is a helper function that requests access to the provided tlds with the provided reason
+// RequestTLDs is a helper function that requests access to the provided TLDs with the provided reason
 // TLDs provided should be marked as able to request from GetTLDStatus()
 func (c *Client) RequestTLDs(tlds []string, reason string) error {
 	c.v("RequestTLDs TLDS: %+v", tlds)
@@ -268,7 +272,7 @@ func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	return c.RequestAllTLDsExcept(reason, nil)
 }
 
-// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason skipping over the TLDs in except
+// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason, excluding the TLDs listed in the except parameter.
 func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string, error) {
 	c.v("RequestAllTLDs")
 	exceptMap := slice2LowerMap(except)
@@ -313,7 +317,7 @@ func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string,
 	return requestTLDs, err
 }
 
-// ExtendTLD is a helper function that requests extensions to the provided tld
+// ExtendTLD is a helper function that requests extensions to the provided TLD
 // TLDs provided should be marked as Extensible from GetRequestInfo()
 func (c *Client) ExtendTLD(tld string) error {
 	c.v("ExtendTLD: %q", tld)
@@ -340,7 +344,7 @@ func (c *Client) ExtendAllTLDs() ([]string, error) {
 	return c.ExtendAllTLDsExcept(nil)
 }
 
-// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable excluding any in except
+// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable, excluding any TLDs listed in the except parameter.
 func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)

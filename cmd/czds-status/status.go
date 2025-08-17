@@ -133,7 +133,11 @@ func csvReport() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Printf("Error closing file: %v", err)
+			}
+		}()
 		out = file
 	} else {
 		v("Printing to StdOut")

@@ -75,7 +75,7 @@ func main() {
 	doRequest := (*requestAll || len(*requestTLDs) > 0)
 	doExtend := (*extendAll || len(*extendTLDs) > 0)
 	doCancel := len(*extendTLDs) > 0
-	if !*printTerms && !*status && !(doRequest || doExtend) && !doCancel {
+	if !*printTerms && !*status && !doRequest && !doExtend && !doCancel {
 		log.Fatal("Nothing to do!")
 	}
 
