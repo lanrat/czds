@@ -34,7 +34,8 @@ func (r *readerCtx) Read(p []byte) (n int, err error) {
 	return r.r.Read(p)
 }
 
-// NewReaderCtx gets a context-aware io.Reader.
-func NewReaderCtx(ctx context.Context, r io.Reader) io.Reader {
+// newReaderCtx creates a context-aware io.Reader that can be cancelled via context.
+// This allows long-running read operations to be interrupted gracefully.
+func newReaderCtx(ctx context.Context, r io.Reader) io.Reader {
 	return &readerCtx{ctx: ctx, r: r}
 }

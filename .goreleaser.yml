@@ -8,7 +8,7 @@ before:
 
 builds:
   - id: czds
-    main: ./cmd/czds
+    main: ./cmd/
     binary: czds
     goos:
       - linux

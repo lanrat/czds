@@ -25,6 +25,10 @@ const (
 	TestAuthURL = "https://account-api-test.icann.org/api/authenticate"
 	// TestBaseURL is the testing URL endpoint for the API
 	TestBaseURL = "https://czds-api-test.icann.org"
+
+	// Default retry and timing constants
+	defaultRetries = 3
+	retryDelay     = 10 * time.Second
 )
 
 var (
@@ -50,9 +54,29 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
+// String returns a string representation of credentials with the password redacted for security.
+func (c Credentials) String() string {
+	return fmt.Sprintf("Credentials{Username: %q, Password: [REDACTED]}", c.Username)
+}
+
+// GoString returns a Go-syntax representation with password redacted, used by %#v and %+v formatting.
+func (c Credentials) GoString() string {
+	return fmt.Sprintf("Credentials{Username: %q, Password: \"[REDACTED]\"}", c.Username)
+}
+
 type authResponse struct {
 	AccessToken string `json:"accessToken"`
 	Message     string `json:"message"`
+}
+
+// String returns a string representation of authResponse with the access token redacted for security.
+func (a authResponse) String() string {
+	return fmt.Sprintf("authResponse{AccessToken: [REDACTED], Message: %q}", a.Message)
+}
+
+// GoString returns a Go-syntax representation with access token redacted, used by %#v and %+v formatting.
+func (a authResponse) GoString() string {
+	return fmt.Sprintf("authResponse{AccessToken: \"[REDACTED]\", Message: %q}", a.Message)
 }
 
 type errorResponse struct {
@@ -73,7 +97,8 @@ func NewClient(username, password string) *Client {
 	return client
 }
 
-// checkAuth does NOT make network requests if the auth is believed to be valid
+// checkAuth verifies the authentication state and renews the token if necessary.
+// It does NOT make network requests if the auth is believed to be valid.
 func (c *Client) checkAuth(ctx context.Context) error {
 	// uses a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
@@ -86,11 +111,13 @@ func (c *Client) checkAuth(ctx context.Context) error {
 	if time.Now().After(c.authExp) {
 		// token expired, renew
 		c.v("auth token expired")
-		return c.Authenticate()
+		return c.AuthenticateWithContext(ctx)
 	}
 	return nil
 }
 
+// httpClient returns the configured HTTP client for the CZDS client,
+// or the default HTTP client if none is configured.
 func (c *Client) httpClient() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
@@ -98,7 +125,8 @@ func (c *Client) httpClient() *http.Client {
 	return defaultHTTPClient
 }
 
-// apiRequest makes a request to the client's API endpoint
+// apiRequest makes an authenticated HTTP request to the CZDS API endpoint with retry logic.
+// It handles authentication, retries on failure, and context cancellation.
 func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, request io.Reader) (*http.Response, error) {
 	c.v("HTTP API Request: %s %q", method, url)
 	if auth {
@@ -108,7 +136,7 @@ func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, 
 		}
 	}
 
-	totalTrys := 3
+	totalTrys := defaultRetries
 	var err error
 	var req *http.Request
 	var resp *http.Response
@@ -143,21 +171,23 @@ func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, 
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(time.Second * 10):
+			case <-time.After(retryDelay):
 			}
 		}
 	}
 
-	return resp, err
+	return nil, err
 }
 
-// jsonAPI performs an authenticated JSON API request
-func (c *Client) jsonAPI(ctx context.Context, method, path string, request, response interface{}) error {
+// jsonAPI performs an authenticated JSON API request to the CZDS base URL with the given path.
+// It marshals the request object to JSON and unmarshals the response.
+func (c *Client) jsonAPI(ctx context.Context, method, path string, request, response any) error {
 	return c.jsonRequest(ctx, true, method, c.BaseURL+path, request, response)
 }
 
-// jsonRequest performs a request to the API endpoint sending and receiving JSON objects
-func (c *Client) jsonRequest(ctx context.Context, auth bool, method, url string, request, response interface{}) error {
+// jsonRequest performs an HTTP request to the specified URL, sending and receiving JSON objects.
+// It handles JSON marshaling/unmarshaling and error response processing.
+func (c *Client) jsonRequest(ctx context.Context, auth bool, method, url string, request, response any) error {
 	var payloadReader io.Reader
 	if request != nil {
 		jsonPayload, err := json.Marshal(request)
@@ -233,20 +263,24 @@ func (c *Client) AuthenticateWithContext(ctx context.Context) error {
 	return nil
 }
 
-// getExpiration returns the expiration of the authentication token
+// getExpiration extracts the expiration time from the JWT access token.
+// It returns the expiration time as a time.Time value.
 func (ar *authResponse) getExpiration() (time.Time, error) {
 	token, err := jwt.DecodeJWT(ar.AccessToken)
 	exp := time.Unix(token.Data.Exp, 0)
 	return exp, err
 }
 
-// GetZoneRequestID returns the most recent RequestID for the given zone
+// GetZoneRequestID returns the most recent request ID for the given zone.
+// It searches through paginated results to find the request for the specified zone name.
 //
-// Deprecated: Use GetZoneRequestIDWithContext
+// Deprecated: Use GetZoneRequestIDWithContext for context cancellation support.
 func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	return c.GetZoneRequestIDWithContext(context.Background(), zone)
 }
 
+// GetZoneRequestIDWithContext retrieves the most recent request ID for the specified zone.
+// It searches through paginated results to find the request for the given zone name.
 func (c *Client) GetZoneRequestIDWithContext(ctx context.Context, zone string) (string, error) {
 	c.v("GetZoneRequestID: %q", zone)
 	zone = strings.ToLower(zone)
@@ -305,15 +339,17 @@ func (c *Client) GetZoneRequestIDWithContext(ctx context.Context, zone string) (
 	return request.RequestID, nil
 }
 
-// GetAllRequests returns the request information for all requests with the given status.
+// GetAllRequests returns all zone requests with the specified status.
 // Status should be one of the constant czds.Status* strings.
-// Warning: for a large number of results, may be slow.
+// Warning: for a large number of results, may be slow as it handles pagination automatically.
 //
-// Deprecated: Use GetAllRequestsWithContext
+// Deprecated: Use GetAllRequestsWithContext for context cancellation support.
 func (c *Client) GetAllRequests(status string) ([]Request, error) {
 	return c.GetAllRequestsWithContext(context.Background(), status)
 }
 
+// GetAllRequestsWithContext retrieves all zone requests with the specified status.
+// It handles pagination automatically to return the complete list of requests.
 func (c *Client) GetAllRequestsWithContext(ctx context.Context, status string) ([]Request, error) {
 	c.v("GetAllRequests status: %q", status)
 	const pageSize = 100

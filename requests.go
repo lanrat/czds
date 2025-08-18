@@ -161,9 +161,9 @@ type CancelRequestSubmission struct {
 	TLDName   string `json:"tldName"`
 }
 
-// GetRequests searches for the status of zone requests as seen on the
-// CZDS dashboard page "https://czds.icann.org/zone-requests/all".
-// This function uses a background context.
+// GetRequests retrieves zone access requests based on the provided filter criteria.
+// It supports pagination and filtering by status, as seen on the CZDS dashboard page
+// "https://czds.icann.org/zone-requests/all".
 //
 // Deprecated: Use GetRequestsWithContext for context cancellation support.
 func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) {
@@ -179,10 +179,10 @@ func (c *Client) GetRequestsWithContext(ctx context.Context, filter *RequestsFil
 	return requests, err
 }
 
-// GetRequestInfo gets detailed information about a particular request and its timeline
-// as seen on the CZDS dashboard page "https://czds.icann.org/zone-requests/{ID}"
+// GetRequestInfo gets detailed information about a particular request and its timeline.
+// It retrieves comprehensive request details as seen on the CZDS dashboard page "https://czds.icann.org/zone-requests/{ID}".
 //
-// Deprecated: Use GetRequestInfoWithContext
+// Deprecated: Use GetRequestInfoWithContext for context cancellation support.
 func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
 	return c.GetRequestInfoWithContext(context.Background(), requestID)
 }
@@ -196,13 +196,16 @@ func (c *Client) GetRequestInfoWithContext(ctx context.Context, requestID string
 	return request, err
 }
 
-// GetTLDStatus gets the current status of all TLDs and their ability to be requested
+// GetTLDStatus gets the current status of all TLDs and their availability for requesting.
+// It returns information about which TLDs can be requested for zone access.
 //
-// Deprecated: Use GetTLDStatusWithContext
+// Deprecated: Use GetTLDStatusWithContext for context cancellation support.
 func (c *Client) GetTLDStatus() ([]TLDStatus, error) {
 	return c.GetTLDStatusWithContext(context.Background())
 }
 
+// GetTLDStatusWithContext retrieves the current status of all TLDs and their availability for requesting.
+// It returns a slice of TLDStatus containing information about each TLD.
 func (c *Client) GetTLDStatusWithContext(ctx context.Context) ([]TLDStatus, error) {
 	c.v("GetTLDStatus")
 	requests := make([]TLDStatus, 0, 20)
@@ -210,15 +213,17 @@ func (c *Client) GetTLDStatusWithContext(ctx context.Context) ([]TLDStatus, erro
 	return requests, err
 }
 
-// GetTerms gets the current terms and conditions from the CZDS portal
-// page "https://czds.icann.org/terms-and-conditions"
-// this is required to accept the terms and conditions when submitting a new request
+// GetTerms gets the current terms and conditions from the CZDS portal.
+// The terms are retrieved from "https://czds.icann.org/terms-and-conditions" and
+// are required to accept when submitting a new zone access request.
 //
-// Deprecated: Use GetTermsWithContext
+// Deprecated: Use GetTermsWithContext for context cancellation support.
 func (c *Client) GetTerms() (*Terms, error) {
 	return c.GetTermsWithContext(context.Background())
 }
 
+// GetTermsWithContext retrieves the current terms and conditions from the CZDS portal.
+// This information is required when submitting new zone access requests.
 func (c *Client) GetTermsWithContext(ctx context.Context) (*Terms, error) {
 	c.v("GetTerms")
 	terms := new(Terms)
@@ -227,27 +232,32 @@ func (c *Client) GetTermsWithContext(ctx context.Context) (*Terms, error) {
 	return terms, err
 }
 
-// SubmitRequest submits a new request for access to new zones
+// SubmitRequest submits a new request for access to specified zones.
+// The request must include valid terms and conditions version and reason.
 //
-// Deprecated: Use SubmitRequestWithContext
+// Deprecated: Use SubmitRequestWithContext for context cancellation support.
 func (c *Client) SubmitRequest(request *RequestSubmission) error {
 	return c.SubmitRequestWithContext(context.Background(), request)
 }
 
+// SubmitRequestWithContext submits a new request for access to specified zones.
+// The request must include valid terms and conditions version and reason.
 func (c *Client) SubmitRequestWithContext(ctx context.Context, request *RequestSubmission) error {
 	c.v("SubmitRequest request: %+v", request)
 	err := c.jsonAPI(ctx, http.MethodPost, "/czds/requests/create", request, nil)
 	return err
 }
 
-// CancelRequest cancels a pre-existing request.
-// Can only cancel pending requests.
+// CancelRequest cancels a pending zone access request.
+// Only requests in pending status can be cancelled.
 //
-// Deprecated: Use CancelRequestWithContext
+// Deprecated: Use CancelRequestWithContext for context cancellation support.
 func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, error) {
 	return c.CancelRequestWithContext(context.Background(), cancel)
 }
 
+// CancelRequestWithContext cancels a pending zone access request.
+// Only requests in pending status can be cancelled.
 func (c *Client) CancelRequestWithContext(ctx context.Context, cancel *CancelRequestSubmission) (*RequestsInfo, error) {
 	c.v("CancelRequest request: %+v", cancel)
 	request := new(RequestsInfo)
@@ -255,14 +265,16 @@ func (c *Client) CancelRequestWithContext(ctx context.Context, cancel *CancelReq
 	return request, err
 }
 
-// RequestExtension submits a request to have the access extended.
-// Can only request extensions for requests expiring within 30 days.
+// RequestExtension submits a request to extend access for a zone request.
+// Extensions can only be requested for approved requests expiring within 30 days.
 //
-// Deprecated: Use RequestExtensionWithContext
+// Deprecated: Use RequestExtensionWithContext for context cancellation support.
 func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
 	return c.RequestExtensionWithContext(context.Background(), requestID)
 }
 
+// RequestExtensionWithContext submits a request to extend access for a zone request.
+// Extensions can only be requested for approved requests expiring within 30 days.
 func (c *Client) RequestExtensionWithContext(ctx context.Context, requestID string) (*RequestsInfo, error) {
 	c.v("RequestExtension request ID: %s", requestID)
 	request := new(RequestsInfo)
@@ -270,14 +282,16 @@ func (c *Client) RequestExtensionWithContext(ctx context.Context, requestID stri
 	return request, err
 }
 
-// DownloadAllRequests outputs the contents of the CSV file downloaded by
-// the "Download All Requests" button on the CZDS portal to the provided output
+// DownloadAllRequests downloads a CSV report of all zone requests to the provided writer.
+// This corresponds to the "Download All Requests" button on the CZDS portal.
 //
-// Deprecated: Use DownloadAllRequestsWithContext
+// Deprecated: Use DownloadAllRequestsWithContext for context cancellation support.
 func (c *Client) DownloadAllRequests(output io.Writer) error {
 	return c.DownloadAllRequestsWithContext(context.Background(), output)
 }
 
+// DownloadAllRequestsWithContext downloads a CSV report of all zone requests to the provided writer.
+// This corresponds to the "Download All Requests" button on the CZDS portal.
 func (c *Client) DownloadAllRequestsWithContext(ctx context.Context, output io.Writer) error {
 	c.v("DownloadAllRequests")
 	url := c.BaseURL + "/czds/requests/report"
@@ -302,14 +316,17 @@ func (c *Client) DownloadAllRequestsWithContext(ctx context.Context, output io.W
 	return nil
 }
 
-// RequestTLDs is a helper function that requests access to the provided TLDs with the provided reason
-// TLDs provided should be marked as able to request from GetTLDStatus()
+// RequestTLDs is a helper function that requests access to the specified TLDs with the provided reason.
+// The TLDs should be marked as available for request from GetTLDStatus().
+// It automatically retrieves the current terms and conditions before submitting the request.
 //
-// Deprecated: Use RequestTLDsWithContext
+// Deprecated: Use RequestTLDsWithContext for context cancellation support.
 func (c *Client) RequestTLDs(tlds []string, reason string) error {
 	return c.RequestTLDsWithContext(context.Background(), tlds, reason)
 }
 
+// RequestTLDsWithContext is a helper function that requests access to the specified TLDs with the provided reason.
+// It automatically retrieves the current terms and conditions before submitting the request.
 func (c *Client) RequestTLDsWithContext(ctx context.Context, tlds []string, reason string) error {
 	c.v("RequestTLDs TLDS: %+v", tlds)
 	// get terms
@@ -328,25 +345,30 @@ func (c *Client) RequestTLDsWithContext(ctx context.Context, tlds []string, reas
 	return err
 }
 
-// RequestAllTLDs is a helper function to request access to all available TLDs with the provided reason
+// RequestAllTLDs is a helper function to request access to all available TLDs with the provided reason.
+// It returns the list of TLDs that were requested.
 //
-// Deprecated: Use RequestAllTLDsExceptWithContext
+// Deprecated: Use RequestAllTLDsWithContext for context cancellation support.
 func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
 	return c.RequestAllTLDsExceptWithContext(context.Background(), reason, nil)
 }
 
+// RequestAllTLDsWithContext is a helper function to request access to all available TLDs with the provided reason.
+// It returns the list of TLDs that were requested.
 func (c *Client) RequestAllTLDsWithContext(ctx context.Context, reason string) ([]string, error) {
 	return c.RequestAllTLDsExceptWithContext(ctx, reason, nil)
 }
 
-// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason,
-// excluding the TLDs listed in the except parameter.
+// RequestAllTLDsExcept requests access to all available TLDs with the provided reason,
+// excluding the TLDs listed in the except parameter. It returns the list of TLDs that were requested.
 //
-// Deprecated: Use RequestAllTLDsExceptWithContext
+// Deprecated: Use RequestAllTLDsExceptWithContext for context cancellation support.
 func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string, error) {
 	return c.RequestAllTLDsExceptWithContext(context.Background(), reason, except)
 }
 
+// RequestAllTLDsExceptWithContext requests access to all available TLDs with the provided reason,
+// excluding the TLDs listed in the except parameter. It returns the list of TLDs that were requested.
 func (c *Client) RequestAllTLDsExceptWithContext(ctx context.Context, reason string, except []string) ([]string, error) {
 	c.v("RequestAllTLDs")
 	exceptMap := slice2LowerMap(except)
@@ -397,14 +419,16 @@ func (c *Client) RequestAllTLDsExceptWithContext(ctx context.Context, reason str
 	return requestTLDs, err
 }
 
-// ExtendTLD is a helper function that requests extensions to the provided TLD
-// TLDs provided should be marked as Extensible from GetRequestInfo()
+// ExtendTLD is a helper function that requests an extension for the specified TLD.
+// The TLD must have an approved request that is marked as extensible from GetRequestInfo().
 //
-// Deprecated: Use ExtendTLDWithContext
+// Deprecated: Use ExtendTLDWithContext for context cancellation support.
 func (c *Client) ExtendTLD(tld string) error {
 	return c.ExtendTLDWithContext(context.Background(), tld)
 }
 
+// ExtendTLDWithContext is a helper function that requests an extension for the specified TLD.
+// The TLD must have an approved request that is marked as extensible.
 func (c *Client) ExtendTLDWithContext(ctx context.Context, tld string) error {
 	c.v("ExtendTLD: %q", tld)
 	requestID, err := c.GetZoneRequestIDWithContext(ctx, tld)
@@ -419,31 +443,36 @@ func (c *Client) ExtendTLDWithContext(ctx context.Context, tld string) error {
 	}
 
 	if !info.ExtensionInProcess {
-		return fmt.Errorf("error, zone request %q, %q: extension already in progress", tld, requestID)
+		return fmt.Errorf("error, zone request %q, %q: failed to initiate extension", tld, requestID)
 	}
 
 	return nil
 }
 
-// ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
+// ExtendAllTLDs is a helper function to request extensions for all extensible TLDs.
+// It returns the list of TLDs for which extensions were requested.
 //
-// Deprecated: Use ExtendAllTLDsExceptWithContext
+// Deprecated: Use ExtendAllTLDsWithContext for context cancellation support.
 func (c *Client) ExtendAllTLDs() ([]string, error) {
 	return c.ExtendAllTLDsExceptWithContext(context.Background(), nil)
 }
 
+// ExtendAllTLDsWithContext is a helper function to request extensions for all extensible TLDs.
+// It returns the list of TLDs for which extensions were requested.
 func (c *Client) ExtendAllTLDsWithContext(ctx context.Context) ([]string, error) {
 	return c.ExtendAllTLDsExceptWithContext(ctx, nil)
 }
 
-// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable,
-// excluding any TLDs listed in the except parameter.
+// ExtendAllTLDsExcept requests extensions for all extensible TLDs,
+// excluding any TLDs listed in the except parameter. It returns the list of TLDs for which extensions were requested.
 //
-// Deprecated: Use ExtendAllTLDsExceptWithContext
+// Deprecated: Use ExtendAllTLDsExceptWithContext for context cancellation support.
 func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
 	return c.ExtendAllTLDsExceptWithContext(context.Background(), except)
 }
 
+// ExtendAllTLDsExceptWithContext requests extensions for all extensible TLDs,
+// excluding any TLDs listed in the except parameter. It returns the list of TLDs for which extensions were requested.
 func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []string) ([]string, error) {
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
@@ -519,6 +548,7 @@ func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []st
 
 	// perform extend
 	c.v("requesting extensions for %d tlds: %+v", len(toExtend), toExtend)
+	excludedCount := 0
 	for _, r := range toExtend {
 		select {
 		case <-ctx.Done():
@@ -527,6 +557,7 @@ func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []st
 		}
 		if exceptMap[r.TLD] {
 			// skip over excluded TLDs
+			excludedCount++
 			continue
 		}
 		_, err := c.RequestExtensionWithContext(ctx, r.RequestID)
@@ -536,8 +567,9 @@ func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []st
 		tlds = append(tlds, r.TLD)
 	}
 
-	if len(tlds) != len(toExtend) {
-		return tlds, fmt.Errorf("expected to extend %d TLDs but only extended %d", len(toExtend), len(tlds))
+	expectedCount := len(toExtend) - excludedCount
+	if len(tlds) != expectedCount {
+		return tlds, fmt.Errorf("expected to extend %d TLDs but only extended %d", expectedCount, len(tlds))
 	}
 
 	return tlds, nil

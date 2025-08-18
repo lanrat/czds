@@ -18,9 +18,8 @@ type DownloadInfo struct {
 	Filename      string
 }
 
-// DownloadZoneToWriter is analogous to DownloadZone but writes to a provided io.Writer instead of a file.
-// It returns the number of bytes written to dest and any error that was encountered.
-// This function uses a background context.
+// DownloadZoneToWriter downloads a zone file from the given URL and writes it to the provided io.Writer.
+// It returns the number of bytes written and any error encountered.
 //
 // Deprecated: Use DownloadZoneToWriterWithContext for context cancellation support.
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
@@ -40,20 +39,21 @@ func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string
 			c.v("Error closing response body: %v", err)
 		}
 	}()
-	w, err := io.Copy(dest, NewReaderCtx(ctx, resp.Body))
+	w, err := io.Copy(dest, newReaderCtx(ctx, resp.Body))
 	if err != nil {
 		return w, err
 	}
 
 	c.v("downloading %d bytes finished from %q", resp.ContentLength, url)
-	if w != resp.ContentLength {
+	// Only validate Content-Length if server provided it (> 0)
+	if resp.ContentLength > 0 && w != resp.ContentLength {
 		return w, fmt.Errorf("downloaded bytes: %d, while request content-length is: %d ", w, resp.ContentLength)
 	}
 	return w, nil
 }
 
-// DownloadZone downloads the zone file from the given zone download URL (retrieved from GetLinks) and
-// saves it to the specified destination path. This function uses a background context.
+// DownloadZone downloads a zone file from the given URL and saves it to the specified file path.
+// The URL should be retrieved from GetLinks(). If an error occurs, any partially downloaded file is removed.
 //
 // Deprecated: Use DownloadZoneWithContext for context cancellation support.
 func (c *Client) DownloadZone(url, destinationPath string) error {
@@ -91,8 +91,8 @@ func (c *Client) DownloadZoneWithContext(ctx context.Context, url, destinationPa
 	return nil
 }
 
-// GetDownloadInfo performs a HEAD request to the zone at url and populates a DownloadInfo struct
-// with the information returned by the headers. This function uses a background context.
+// GetDownloadInfo retrieves metadata about a zone file download without downloading the file itself.
+// It performs a HEAD request to get information like file size, last modified time, and filename.
 //
 // Deprecated: Use GetDownloadInfoWithContext for context cancellation support.
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
@@ -132,6 +132,11 @@ func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*D
 		return nil, err
 	}
 
+	// Validate Content-Length is not negative
+	if contentLength < 0 {
+		return nil, fmt.Errorf("invalid Content-Length: %d bytes", contentLength)
+	}
+
 	contentDisposition := resp.Header.Get("Content-Disposition")
 	_, params, err := mime.ParseMediaType(contentDisposition)
 	if err != nil {
@@ -146,8 +151,8 @@ func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*D
 	return info, nil
 }
 
-// GetLinks returns the download links available to the authenticated user.
-// This function uses a background context.
+// GetLinks returns all zone download links available to the authenticated user.
+// The returned URLs can be used with the download functions to retrieve zone files.
 //
 // Deprecated: Use GetLinksWithContext for context cancellation support.
 func (c *Client) GetLinks() ([]string, error) {
@@ -165,9 +170,7 @@ func (c *Client) GetLinksWithContext(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	dLinks := make([]string, 0, len(links))
-	dLinks = append(dLinks, links...)
-	c.v("GetLinks returned %d links", len(dLinks))
+	c.v("GetLinks returned %d links", len(links))
 
-	return dLinks, nil
+	return links, nil
 }
