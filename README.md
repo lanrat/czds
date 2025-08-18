@@ -4,10 +4,10 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/lanrat/czds)](https://pkg.go.dev/github.com/lanrat/czds)
 [![docker](https://github.com/lanrat/czds/actions/workflows/docker.yml/badge.svg)](https://github.com/lanrat/czds/actions/workflows/docker.yml)
 
-A utility and golang library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
-using both the documented and undocumented API endpoints
+A utility and Go library implementing a client to the [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf),
+using both the documented and undocumented API endpoints.
 
-Should allow you to perform almost any action you can in the web interface via [this API](https://pkg.go.dev/github.com/lanrat/czds)
+The Go API allows you to perform almost any action available in the web interface. See the [API documentation](https://pkg.go.dev/github.com/lanrat/czds) for details.
 
 ## CZDS CLI
 
@@ -20,10 +20,10 @@ A unified command-line interface that provides all functionality through subcomm
 
 ### Features
 
-- Can be used as a standalone client or as an API for another client
+- Can be used as a standalone client or embedded as a library in other applications
 - Automatically refreshes authorization token if expired during download
 - Can save downloaded zones as named by `Content-Disposition` or URL name
-- Can compare local and remote files size and modification time to skip redownloading unchanged zones
+- Can compare local and remote file size and modification time to skip redownloading unchanged zones
 - Can download multiple zones in parallel
 - [Docker](#docker) image available
 
@@ -112,9 +112,9 @@ Options:
 czds download                                # Download all available zones
 czds download -zones com,org                 # Download specific zones
 czds download -parallel 10 -out ./zones     # Download with 10 parallel workers
-czds download -force -zone com               # Force redownload of com zone
+czds download -force -zones com              # Force redownload of com zone
 czds download -exclude com,net               # Download all except com and net
-czds download -progress -zone com            # Download with progress reporting
+czds download -progress -zones com           # Download with progress reporting
 
 # Zones can also be specified as positional arguments:
 czds download com org net                    # Download com, org, and net zones
@@ -184,7 +184,7 @@ View information about current zone file requests
 
 ### Status Usage
 
-By default the status subcommand prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
+By default the status subcommand prints high-level information about all CZDS requests, like the [reports page](https://czds.icann.org/zone-requests/all) on CZDS.
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```text
@@ -256,22 +256,21 @@ History:
 ## Building
 
 Just run make!
-Building from source requires go >= 1.11 for module support
 
 ```console
 make
 ```
 
-## [Docker](https://hub.docker.com/r/lanrat/czds/)
+## [Docker](https://github.com/lanrat/czds/pkgs/container/czds)
 
 Using command-line flags:
 
 ```console
-docker run --rm -v /path/to/zones/:/zones lanrat/czds czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones  ghcr.io/lanrat/czds czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
 
 Using environment variables:
 
 ```console
-docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD" lanrat/czds czds download
+docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD"  ghcr.io/lanrat/czds czds download
 ```
