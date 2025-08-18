@@ -66,11 +66,14 @@ type Client struct {
 	HTTPClient *http.Client
 	AuthURL    string
 	BaseURL    string
-	auth       authResponse
-	authExp    time.Time
-	Creds      Credentials
-	authMutex  sync.Mutex
-	log        Logger
+	// UserAgent is the User-Agent header value sent with HTTP requests.
+	// If empty, no User-Agent header will be set.
+	UserAgent string
+	auth      authResponse
+	authExp   time.Time
+	Creds     Credentials
+	authMutex sync.Mutex
+	log       Logger
 }
 
 // Credentials used by the czds.Client
@@ -183,6 +186,9 @@ func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, 
 			req.Header.Set("Content-Type", "application/json")
 		}
 		req.Header.Set("Accept", "application/json")
+		if c.UserAgent != "" {
+			req.Header.Set("User-Agent", c.UserAgent)
+		}
 		if auth {
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 		}

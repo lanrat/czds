@@ -13,6 +13,11 @@ import (
 	"github.com/lanrat/czds"
 )
 
+const (
+	// userAgent is the User-Agent string used for HTTP requests
+	userAgent = "lanrat/czds"
+)
+
 // GlobalFlags contains common flags that most commands need
 type GlobalFlags struct {
 	Username string
@@ -47,6 +52,7 @@ func createClient(gf *GlobalFlags) (*czds.Client, error) {
 	}
 
 	client := czds.NewClient(gf.Username, gf.Password)
+	client.UserAgent = fmt.Sprintf("%s %s", userAgent, version)
 
 	if gf.Verbose {
 		client.SetLogger(log.Default())
