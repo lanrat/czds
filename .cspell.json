@@ -30,6 +30,7 @@
         "trimpath",
         "Trys",
         "tzdata",
+        "unmarshals",
         "дети"
     ],
     // flagWords - list of words to be always considered incorrect
