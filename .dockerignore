@@ -1,7 +1,9 @@
 Dockerfile
+dist/
 LICENSE
 *.md
 .vscode/
 .cspell.json
 .goreleaser.yml
 czds
+zones/
