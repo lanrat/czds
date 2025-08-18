@@ -40,28 +40,33 @@ type Data struct {
 
 // DecodeJWT decodes a JWT encoded string and returns the decoded Token.
 func DecodeJWT(jwtStr string) (*Token, error) {
-	token := &Token{}
 	parts := strings.Split(jwtStr, ".")
 	if len(parts) != 3 {
-		return token, fmt.Errorf("JWT Token has %d parts not 3: %s", len(parts), jwtStr)
+		return nil, fmt.Errorf("JWT Token has %d parts not 3", len(parts))
 	}
+	
 	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return token, err
+		return nil, fmt.Errorf("failed to decode JWT header: %w", err)
 	}
 	dataBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return token, err
+		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
 	}
+	
+	token := &Token{}
 	token.Signature, err = base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return token, err
+		return nil, fmt.Errorf("failed to decode JWT signature: %w", err)
 	}
 	err = json.Unmarshal(headerBytes, &token.Header)
 	if err != nil {
-		return token, err
+		return nil, fmt.Errorf("failed to unmarshal JWT header: %w", err)
 	}
 	err = json.Unmarshal(dataBytes, &token.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JWT payload: %w", err)
+	}
 
-	return token, err
+	return token, nil
 }

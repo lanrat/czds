@@ -305,8 +305,8 @@ func (c *Client) DownloadAllRequestsWithContext(ctx context.Context, output io.W
 		}
 	}()
 
-	// TODO add context here
-	n, err := io.Copy(output, resp.Body)
+	// Use context-aware reader for cancellation support
+	n, err := io.Copy(output, newReaderCtx(ctx, resp.Body))
 	if err != nil {
 		return err
 	}

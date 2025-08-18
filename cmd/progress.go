@@ -46,7 +46,8 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 			progress := pw.writtenBytes * 100 / pw.totalBytes
 			// Report every 10% progress to avoid spam
 			if progress >= pw.lastReport+10 {
-				fmt.Printf("[%s] Progress: %d%% (%s/%s)\n",
+				// Ignore errors from progress output to prevent blocking on closed stdout
+				_, _ = fmt.Printf("[%s] Progress: %d%% (%s/%s)\n",
 					pw.filename,
 					progress,
 					formatBytes(pw.writtenBytes),
@@ -58,7 +59,8 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 			// Report every 25MB to avoid spam for unknown sizes
 			progressMB := pw.writtenBytes / (25 * 1024 * 1024) // 25MB chunks
 			if progressMB > pw.lastReport {
-				fmt.Printf("[%s] Downloaded: %s...\n",
+				// Ignore errors from progress output to prevent blocking on closed stdout
+				_, _ = fmt.Printf("[%s] Downloaded: %s...\n",
 					pw.filename,
 					formatBytes(pw.writtenBytes))
 				pw.lastReport = progressMB

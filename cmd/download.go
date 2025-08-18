@@ -40,12 +40,11 @@ type DownloadConfig struct {
 }
 
 // zoneInfo contains information about a zone file download task,
-// including the zone name, download URL, local file path, and retry count.
+// including the zone name, download URL, and local file path.
 type zoneInfo struct {
 	Name     string // Zone name (e.g., "com", "org")
 	Dl       string // Download URL for the zone file
 	FullPath string // Full local file path where zone will be saved
-	Count    int    // Current retry attempt count
 }
 
 // downloadCmd creates and configures the download subcommand for the czds CLI.
@@ -255,9 +254,8 @@ func addLinks(ctx context.Context, downloads []string, inputChan chan<- *zoneInf
 		case <-ctx.Done():
 			return ctx.Err()
 		case inputChan <- &zoneInfo{
-			Name:  path.Base(dl),
-			Dl:    dl,
-			Count: 1,
+			Name: path.Base(dl),
+			Dl:   dl,
 		}:
 		}
 	}
@@ -283,43 +281,49 @@ func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, in
 				return nil
 			}
 
-			for uint(zi.Count) <= config.Retries {
-				// Check for context cancellation
+			var err error
+			for attempt := 1; attempt <= int(config.Retries); attempt++ {
+				// Check context cancellation
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
 				default:
 				}
 
-				err := zoneDownload(ctx, client, config, zi, verbose)
-				zi.Count++
-				if err != nil {
-					// don't stop on an error that only affects a single zone
-					// fixes occasional HTTP 500s from CZDS
-					if verbose {
-						fmt.Printf("[%s] err: %s\n", path.Base(zi.Dl), err)
-					}
-				} else {
-					// got the zone, exit the retry loop
+				err = zoneDownload(ctx, client, config, zi, verbose)
+				if err == nil {
+					// Success - exit retry loop
 					break
 				}
 
-				if uint(zi.Count) <= config.Retries {
-					// Context-aware sleep
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					case <-time.After(downloadRetryDelay):
-					}
-					continue
+				// Log the error for this attempt
+				// don't stop on an error that only affects a single zone
+				// fixes occasional HTTP 500s from CZDS
+				if verbose {
+					fmt.Printf("[%s] Attempt %d/%d failed: %s\n", path.Base(zi.Dl), attempt, config.Retries, err)
 				}
 
-				fmt.Printf("[%s] Max fail count hit; not downloading.\n", path.Base(zi.Dl))
-				if _, err := os.Stat(zi.FullPath); !os.IsNotExist(err) {
-					err = os.Remove(zi.FullPath)
-					if err != nil {
+				// If this was the last attempt, don't sleep
+				if attempt >= int(config.Retries) {
+					break
+				}
+
+				// Context-aware sleep before retry
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(downloadRetryDelay):
+				}
+			}
+
+			// Handle final failure after all retries exhausted
+			if err != nil {
+				fmt.Printf("[%s] Max fail count hit after %d attempts; not downloading.\n", path.Base(zi.Dl), config.Retries)
+				// cleanup partial file if it exists
+				if _, statErr := os.Stat(zi.FullPath); !os.IsNotExist(statErr) {
+					if removeErr := os.Remove(zi.FullPath); removeErr != nil {
 						// log but continue; not fatal
-						fmt.Printf("[%s] %s\n", zi.Dl, err)
+						fmt.Printf("[%s] Error removing partial file: %s\n", zi.Dl, removeErr)
 					}
 				}
 			}
@@ -351,7 +355,20 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 		return fmt.Errorf("invalid filename: %q", localFileName)
 	}
 
-	zi.FullPath = path.Join(config.OutDir, safeFileName)
+	zi.FullPath = filepath.Join(config.OutDir, safeFileName)
+	
+	// Extra safety check: ensure the resolved path is still within the output directory
+	absOutDir, err := filepath.Abs(config.OutDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve output directory: %w", err)
+	}
+	absFullPath, err := filepath.Abs(zi.FullPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target path: %w", err)
+	}
+	if !strings.HasPrefix(absFullPath, absOutDir+string(filepath.Separator)) && absFullPath != absOutDir {
+		return fmt.Errorf("resolved path %q is outside output directory %q", absFullPath, absOutDir)
+	}
 
 	localFileInfo, err := os.Stat(zi.FullPath)
 	if config.Force {

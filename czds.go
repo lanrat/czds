@@ -132,9 +132,11 @@ func (c *Client) checkAuth(ctx context.Context) error {
 		c.v("no auth token")
 		return c.AuthenticateWithContext(ctx)
 	}
-	if time.Now().After(c.authExp) {
-		// token expired, renew
-		c.v("auth token expired")
+	// Add 30-second buffer to prevent race conditions
+	bufferTime := 30 * time.Second
+	if time.Now().Add(bufferTime).After(c.authExp) {
+		// token expired or expiring soon, renew
+		c.v("auth token expired or expiring soon")
 		return c.AuthenticateWithContext(ctx)
 	}
 	return nil
@@ -180,7 +182,9 @@ func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, 
 			req.Header.Set("Content-Type", "application/json")
 		}
 		req.Header.Set("Accept", "application/json")
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+		if auth {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+		}
 
 		resp, err = c.httpClient().Do(req)
 		if err != nil {
