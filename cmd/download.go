@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -193,11 +192,22 @@ func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfi
 }
 
 // getDownloadLinks retrieves the list of zone download URLs based on command configuration.
-// It handles both specific zone requests and fetching all available zones with exclusions.
+// It always uses API-provided links and filters them based on the requested zones and exclusions.
 func getDownloadLinks(ctx context.Context, client *czds.Client, config *DownloadConfig, verbose bool) ([]string, error) {
-	var downloads []string
+	// Always get all available download links from API
+	if verbose {
+		fmt.Println("Requesting download links")
+	}
+	downloads, err := client.GetLinksWithContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get download links: %w", err)
+	}
 
-	// If zones specified via args or -zone flag, download those specifically
+	if verbose {
+		fmt.Printf("Received %d zone links\n", len(downloads))
+	}
+
+	// If zones specified via args or -zone flag, filter to those zones
 	var zonesToDownload []string
 	if len(config.Zones) > 0 {
 		zonesToDownload = config.Zones
@@ -206,31 +216,49 @@ func getDownloadLinks(ctx context.Context, client *czds.Client, config *Download
 	}
 
 	if len(zonesToDownload) > 0 {
-		// Build URLs for specific zones
+		// Filter links to match requested zones
+		zoneSet := make(map[string]bool)
 		for _, zoneName := range zonesToDownload {
-			u, _ := url.Parse(czds.BaseURL)
-			u.Path = path.Join(u.Path, "/czds/downloads/", fmt.Sprintf("%s.zone", strings.ToLower(zoneName)))
-			downloads = append(downloads, u.String())
-		}
-	} else {
-		// Get all available download links
-		if verbose {
-			fmt.Println("Requesting download links")
-		}
-		var err error
-		downloads, err = client.GetLinksWithContext(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get download links: %w", err)
+			zoneSet[strings.ToLower(zoneName)] = true
 		}
 
-		// Apply exclusions if specified
-		if config.Exclude != "" {
-			downloads = pruneLinks(downloads, config.Exclude)
+		var filteredDownloads []string
+		for _, link := range downloads {
+			// Extract zone name from URL (e.g., "com.zone" -> "com")
+			fileName := path.Base(link)
+			zoneName := strings.TrimSuffix(fileName, ".zone")
+			if zoneSet[strings.ToLower(zoneName)] {
+				filteredDownloads = append(filteredDownloads, link)
+			}
 		}
 
-		if verbose {
-			fmt.Printf("Received %d zone links\n", len(downloads))
+		// Check if any requested zones were not found
+		if len(filteredDownloads) < len(zonesToDownload) {
+			foundZones := make(map[string]bool)
+			for _, link := range filteredDownloads {
+				fileName := path.Base(link)
+				zoneName := strings.TrimSuffix(fileName, ".zone")
+				foundZones[strings.ToLower(zoneName)] = true
+			}
+
+			var missingZones []string
+			for _, zoneName := range zonesToDownload {
+				if !foundZones[strings.ToLower(zoneName)] {
+					missingZones = append(missingZones, zoneName)
+				}
+			}
+
+			if len(missingZones) > 0 {
+				return nil, fmt.Errorf("zones not available for download: %s", strings.Join(missingZones, ", "))
+			}
 		}
+
+		downloads = filteredDownloads
+	}
+
+	// Apply exclusions if specified
+	if config.Exclude != "" {
+		downloads = pruneLinks(downloads, config.Exclude)
 	}
 
 	return downloads, nil
