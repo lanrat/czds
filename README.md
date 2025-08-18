@@ -45,7 +45,6 @@ The czds command supports multiple authentication methods:
 
 1. **Command-line flags**: `-username` and `-password`
 2. **Environment variables**: `CZDS_USERNAME` and `CZDS_PASSWORD`
-3. **Password sources**: `-passin` for reading passwords from various sources
 
 Environment variables are checked first and used as defaults if the corresponding flags are not provided.
 
@@ -65,8 +64,6 @@ Usage of czds download:
         path to save downloaded zones to (default ".")
   -parallel uint
         number of zones to download in parallel (default 5)
-  -passin string
-        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -quiet
@@ -125,8 +122,6 @@ Usage of czds request:
         comma separated list of zones to request extensions
   -extend-all
         extend all possible zones
-  -passin string
-        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -reason string
@@ -147,26 +142,24 @@ Usage of czds request:
 
 ### Example
 
-View zones able to be requested, prompting the user
-interactively for their password:
+View zones able to be requested:
 
 ```text
-./czds request -username "$USERNAME" -passin "tty" -status  | grep -v pending | grep -v approved
-Password:
+./czds request -username "$USERNAME" -password "$PASSWORD" -status | grep -v pending | grep -v approved
 ```
 
-Request access to new zones, reading the user's
-password from the file `~/.czds.pass`:
+Request access to new zones using environment variables:
 
 ```text
-./czds request -username "$USERNAME" -passin "file:~/.czds.pass" -request "red,blue,xyz" -reason "$REASON"
+export CZDS_USERNAME="your_username"
+export CZDS_PASSWORD="your_password"
+./czds request -request "red,blue,xyz" -reason "$REASON"
 ```
 
-Request access to all zones:
+Request access to all zones using command line flags:
 
 ```text
-./czds request -username "$USERNAME" -passin "tty" -request-all -reason "$REASON"
-Password:
+./czds request -username "$USERNAME" -password "$PASSWORD" -request-all -reason "$REASON"
 ```
 
 ## Status Subcommand
@@ -182,8 +175,6 @@ Detailed information about a particular zone can be displayed with the `-zone` o
 Usage of czds status:
   -id string
         ID of specific zone request to lookup, defaults to printing all
-  -passin string
-        password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
   -report string

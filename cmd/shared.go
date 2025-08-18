@@ -17,7 +17,6 @@ import (
 type GlobalFlags struct {
 	Username string
 	Password string
-	Passin   string
 	Verbose  bool
 }
 
@@ -38,28 +37,16 @@ func addGlobalFlags(fs *flag.FlagSet, gf *GlobalFlags) {
 
 	fs.StringVar(&gf.Username, "username", defaultUsername, "username to authenticate with (or set CZDS_USERNAME env var)")
 	fs.StringVar(&gf.Password, "password", defaultPassword, "password to authenticate with (or set CZDS_PASSWORD env var)")
-	fs.StringVar(&gf.Passin, "passin", "", "password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)")
 	fs.BoolVar(&gf.Verbose, "verbose", false, "enable verbose logging")
 }
 
 // createClient creates a CZDS client using the global flags for authentication
 func createClient(gf *GlobalFlags) (*czds.Client, error) {
-	var password string
-	var err error
-
-	if gf.Passin != "" {
-		password, err = Getpass(gf.Passin)
-	} else if gf.Password != "" {
-		password = gf.Password
-	} else {
-		password, err = Getpass()
+	if gf.Password == "" {
+		return nil, fmt.Errorf("password is required (use -password flag or set CZDS_PASSWORD env var)")
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	client := czds.NewClient(gf.Username, password)
+	client := czds.NewClient(gf.Username, gf.Password)
 
 	if gf.Verbose {
 		client.SetLogger(log.Default())

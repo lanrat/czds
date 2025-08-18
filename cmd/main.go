@@ -69,7 +69,6 @@ Use "czds <command> -h" for more information about a command.
 Global Options:
   -username string    Username to authenticate with (or set CZDS_USERNAME env var)
   -password string    Password to authenticate with (or set CZDS_PASSWORD env var)
-  -passin string      Password source (env:VAR, file:PATH, keychain:NAME, etc.)
   -verbose            Enable verbose logging
 
 Examples:
