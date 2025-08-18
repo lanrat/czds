@@ -16,9 +16,10 @@ import (
 // It contains settings for querying request status by ID or zone name,
 // and for generating CSV reports of request information.
 type StatusConfig struct {
-	ID     string // Request ID to query for detailed status information
-	Zone   string // Zone name to query for status information
-	Report string // Path to generate CSV report of all requests
+	ID       string // Request ID to query for detailed status information
+	Zone     string // Zone name to query for status information
+	Report   string // Path to generate CSV report of all requests
+	Progress bool   // Show progress for CSV report downloads
 }
 
 // statusCmd creates and configures the status subcommand for checking CZDS request status.
@@ -36,6 +37,7 @@ func statusCmd() *Command {
 	fs.StringVar(&config.ID, "id", "", "ID of specific zone request to lookup, defaults to printing all")
 	fs.StringVar(&config.Zone, "zone", "", "same as -id, but prints the request by zone name")
 	fs.StringVar(&config.Report, "report", "", "filename to save report CSV to, '-' for stdout")
+	fs.BoolVar(&config.Progress, "progress", false, "show download progress for CSV reports")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: czds status [OPTIONS]\n\n")
@@ -47,6 +49,7 @@ func statusCmd() *Command {
 		fmt.Fprintf(os.Stderr, "  czds status -zone com                # Show details for com zone\n")
 		fmt.Fprintf(os.Stderr, "  czds status -id REQUEST_ID           # Show details for specific request\n")
 		fmt.Fprintf(os.Stderr, "  czds status -report report.csv       # Generate CSV report\n")
+		fmt.Fprintf(os.Stderr, "  czds status -report report.csv -progress # Generate CSV with progress\n")
 	}
 
 	return &Command{
@@ -101,7 +104,7 @@ func runStatus(ctx context.Context, client *czds.Client, config *StatusConfig, v
 
 	// Generate CSV report
 	if config.Report != "" {
-		return generateCSVReport(ctx, client, config.Report, verbose)
+		return generateCSVReport(ctx, client, config.Report, verbose, config.Progress)
 	}
 
 	// List all requests
@@ -149,7 +152,7 @@ func showRequestDetails(ctx context.Context, client *czds.Client, requestID stri
 
 // generateCSVReport downloads a CSV report of all requests to the specified file path.
 // If reportPath is "-", the report is written to stdout instead of a file.
-func generateCSVReport(ctx context.Context, client *czds.Client, reportPath string, verbose bool) error {
+func generateCSVReport(ctx context.Context, client *czds.Client, reportPath string, verbose bool, showProgress bool) error {
 	var out io.Writer = os.Stdout
 
 	if reportPath != "-" {
@@ -173,6 +176,13 @@ func generateCSVReport(ctx context.Context, client *czds.Client, reportPath stri
 			}
 		}()
 		out = file
+
+		// Wrap output with progress writer if requested (but not for stdout)
+		if showProgress {
+			// For CSV reports, we don't know the size ahead of time, so pass 0 for totalBytes
+			// This will show bytes downloaded without percentage
+			out = newProgressWriter(out, 0, reportPath, false)
+		}
 	}
 
 	return client.DownloadAllRequestsWithContext(ctx, out)

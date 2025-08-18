@@ -44,7 +44,7 @@ func DecodeJWT(jwtStr string) (*Token, error) {
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("JWT Token has %d parts not 3", len(parts))
 	}
-	
+
 	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode JWT header: %w", err)
@@ -53,7 +53,7 @@ func DecodeJWT(jwtStr string) (*Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
 	}
-	
+
 	token := &Token{}
 	token.Signature, err = base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {

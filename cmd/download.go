@@ -356,7 +356,7 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 	}
 
 	zi.FullPath = filepath.Join(config.OutDir, safeFileName)
-	
+
 	// Extra safety check: ensure the resolved path is still within the output directory
 	absOutDir, err := filepath.Abs(config.OutDir)
 	if err != nil {
