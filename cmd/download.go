@@ -59,13 +59,13 @@ func downloadCmd() *Command {
 
 	// Add download-specific flags
 	fs.UintVar(&config.Parallel, "parallel", 5, "number of zones to download in parallel")
-	fs.StringVar(&config.OutDir, "out", ".", "path to save downloaded zones to")
+	fs.StringVar(&config.OutDir, "out", "zones", "path to save downloaded zones to")
 	fs.BoolVar(&config.URLName, "urlname", false, "use the filename from the url link as the saved filename instead of the file header")
 	fs.BoolVar(&config.Force, "force", false, "force redownloading the zone even if it already exists on local disk with same size and modification date")
 	fs.BoolVar(&config.Redownload, "redownload", false, "redownload zones that are newer on the remote server than local copy")
 	fs.StringVar(&config.Exclude, "exclude", "", "don't fetch these zones")
 	fs.UintVar(&config.Retries, "retries", 3, "max retry attempts per zone file download")
-	fs.StringVar(&config.Zone, "zone", "", "comma separated list of zones to download, defaults to all")
+	fs.StringVar(&config.Zone, "zones", "", "comma separated list of zones to download, defaults to all")
 	fs.BoolVar(&config.Quiet, "quiet", false, "suppress progress printing")
 	fs.BoolVar(&config.Progress, "progress", false, "show download progress for large files (>50MB)")
 
@@ -76,7 +76,7 @@ func downloadCmd() *Command {
 		fs.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  czds download                                # Download all available zones\n")
-		fmt.Fprintf(os.Stderr, "  czds download -zone com,org                  # Download specific zones\n")
+		fmt.Fprintf(os.Stderr, "  czds download -zones com,org                  # Download specific zones\n")
 		fmt.Fprintf(os.Stderr, "  czds download -parallel 10 -out ./zones     # Download with 10 parallel workers\n")
 		fmt.Fprintf(os.Stderr, "  czds download -force -zone com               # Force redownload of com zone\n")
 		fmt.Fprintf(os.Stderr, "  czds download -exclude com,net               # Download all except com and net\n")
@@ -207,7 +207,7 @@ func getDownloadLinks(ctx context.Context, client *czds.Client, config *Download
 		fmt.Printf("Received %d zone links\n", len(downloads))
 	}
 
-	// If zones specified via args or -zone flag, filter to those zones
+	// If zones specified via args or -zones flag, filter to those zones
 	var zonesToDownload []string
 	if len(config.Zones) > 0 {
 		zonesToDownload = config.Zones

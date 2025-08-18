@@ -61,7 +61,7 @@ Usage of czds download:
   -force
         force redownloading the zone even if it already exists on local disk with same size and modification date
   -out string
-        path to save downloaded zones to (default ".")
+        path to save downloaded zones to (default "zones")
   -parallel uint
         number of zones to download in parallel (default 5)
   -password string
@@ -78,7 +78,7 @@ Usage of czds download:
         username to authenticate with
   -verbose
         enable verbose logging
-  -zone string
+  -zones string
         comma separated list of zones to download, defaults to all
 ```
 
@@ -86,14 +86,14 @@ Usage of czds download:
 
 Using command-line flags:
 ```shell
-$ ./czds download -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
+$ ./czds download -username "$USERNAME" -password "$PASSWORD" -verbose
 ```
 
 Using environment variables:
 ```shell
 $ export CZDS_USERNAME="your_username"
 $ export CZDS_PASSWORD="your_password"
-$ ./czds download -out /zones -verbose
+$ ./czds download -verbose
 2019/01/12 16:23:51 Authenticating to https://account-api.icann.org/api/authenticate
 2019/01/12 16:23:52 'zones' does not exist, creating
 2019/01/12 16:23:52 requesting download links
@@ -241,5 +241,5 @@ docker run --rm -v /path/to/zones/:/zones lanrat/czds czds download -out /zones 
 
 Using environment variables:
 ```console
-docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD" lanrat/czds czds download -out /zones
+docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD" lanrat/czds czds download
 ```
