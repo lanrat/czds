@@ -58,10 +58,10 @@ func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string
 // copyWithBuffer copies from src to dst using a pooled buffer for better performance
 func copyWithBuffer(dst io.Writer, src io.Reader) (int64, error) {
 	// Get buffer from pool
-	buf := bufferPool.Get().([]byte)
-	defer bufferPool.Put(buf)
+	bufPtr := bufferPool.Get().(*[]byte)
+	defer bufferPool.Put(bufPtr)
 
-	return io.CopyBuffer(dst, src, buf)
+	return io.CopyBuffer(dst, src, *bufPtr)
 }
 
 // DownloadZone downloads a zone file from the given URL and saves it to the specified file path.

@@ -37,7 +37,8 @@ var (
 	bufferPool = sync.Pool{
 		New: func() interface{} {
 			// 64KB buffer size - good balance between memory usage and I/O efficiency
-			return make([]byte, 64*1024)
+			buf := make([]byte, 64*1024)
+			return &buf
 		},
 	}
 )
