@@ -1,9 +1,11 @@
 package czds
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -45,7 +47,7 @@ const (
 	StatusDenied    = "denied"
 	StatusExpired   = "expired"
 	StatusCanceled  = "canceled"
-	StatusRevoked   = "revoked" // unverified
+	StatusRevoked   = "revoked" // TODO unverified
 )
 
 // number of days into the future to check zones for expiration extensions.
@@ -161,72 +163,120 @@ type CancelRequestSubmission struct {
 
 // GetRequests searches for the status of zone requests as seen on the
 // CZDS dashboard page "https://czds.icann.org/zone-requests/all"
+//
+// Deprecated: Use GetRequestsWithContext
 func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) {
+	return c.GetRequestsWithContext(context.Background(), filter)
+}
+
+func (c *Client) GetRequestsWithContext(ctx context.Context, filter *RequestsFilter) (*RequestsResponse, error) {
 	c.v("GetRequests filter: %+v", filter)
 	requests := new(RequestsResponse)
-	err := c.jsonAPI("POST", "/czds/requests/all", filter, requests)
+	err := c.jsonAPI(ctx, http.MethodPost, "/czds/requests/all", filter, requests)
 	return requests, err
 }
 
 // GetRequestInfo gets detailed information about a particular request and its timeline
 // as seen on the CZDS dashboard page "https://czds.icann.org/zone-requests/{ID}"
+//
+// Deprecated: Use GetRequestInfoWithContext
 func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
+	return c.GetRequestInfoWithContext(context.Background(), requestID)
+}
+
+func (c *Client) GetRequestInfoWithContext(ctx context.Context, requestID string) (*RequestsInfo, error) {
 	c.v("GetRequestInfo request ID: %s", requestID)
 	request := new(RequestsInfo)
-	err := c.jsonAPI("GET", "/czds/requests/"+requestID, nil, request)
+	err := c.jsonAPI(ctx, http.MethodGet, "/czds/requests/"+requestID, nil, request)
 	return request, err
 }
 
 // GetTLDStatus gets the current status of all TLDs and their ability to be requested
+//
+// Deprecated: Use GetTLDStatusWithContext
 func (c *Client) GetTLDStatus() ([]TLDStatus, error) {
+	return c.GetTLDStatusWithContext(context.Background())
+}
+
+func (c *Client) GetTLDStatusWithContext(ctx context.Context) ([]TLDStatus, error) {
 	c.v("GetTLDStatus")
 	requests := make([]TLDStatus, 0, 20)
-	err := c.jsonAPI("GET", "/czds/tlds", nil, &requests)
+	err := c.jsonAPI(ctx, http.MethodGet, "/czds/tlds", nil, &requests)
 	return requests, err
 }
 
 // GetTerms gets the current terms and conditions from the CZDS portal
 // page "https://czds.icann.org/terms-and-conditions"
 // this is required to accept the terms and conditions when submitting a new request
+//
+// Deprecated: Use GetTermsWithContext
 func (c *Client) GetTerms() (*Terms, error) {
+	return c.GetTermsWithContext(context.Background())
+}
+
+func (c *Client) GetTermsWithContext(ctx context.Context) (*Terms, error) {
 	c.v("GetTerms")
 	terms := new(Terms)
 	// this does not appear to need auth, but we auth regardless
-	err := c.jsonAPI("GET", "/czds/terms/condition", nil, terms)
+	err := c.jsonAPI(ctx, http.MethodGet, "/czds/terms/condition", nil, terms)
 	return terms, err
 }
 
 // SubmitRequest submits a new request for access to new zones
+//
+// Deprecated: Use SubmitRequestWithContext
 func (c *Client) SubmitRequest(request *RequestSubmission) error {
+	return c.SubmitRequestWithContext(context.Background(), request)
+}
+
+func (c *Client) SubmitRequestWithContext(ctx context.Context, request *RequestSubmission) error {
 	c.v("SubmitRequest request: %+v", request)
-	err := c.jsonAPI("POST", "/czds/requests/create", request, nil)
+	err := c.jsonAPI(ctx, http.MethodPost, "/czds/requests/create", request, nil)
 	return err
 }
 
 // CancelRequest cancels a pre-existing request.
 // Can only cancel pending requests.
+//
+// Deprecated: Use CancelRequestWithContext
 func (c *Client) CancelRequest(cancel *CancelRequestSubmission) (*RequestsInfo, error) {
+	return c.CancelRequestWithContext(context.Background(), cancel)
+}
+
+func (c *Client) CancelRequestWithContext(ctx context.Context, cancel *CancelRequestSubmission) (*RequestsInfo, error) {
 	c.v("CancelRequest request: %+v", cancel)
 	request := new(RequestsInfo)
-	err := c.jsonAPI("POST", "/czds/requests/cancel", cancel, request)
+	err := c.jsonAPI(ctx, http.MethodPost, "/czds/requests/cancel", cancel, request)
 	return request, err
 }
 
 // RequestExtension submits a request to have the access extended.
 // Can only request extensions for requests expiring within 30 days.
+//
+// Deprecated: Use RequestExtensionWithContext
 func (c *Client) RequestExtension(requestID string) (*RequestsInfo, error) {
+	return c.RequestExtensionWithContext(context.Background(), requestID)
+}
+
+func (c *Client) RequestExtensionWithContext(ctx context.Context, requestID string) (*RequestsInfo, error) {
 	c.v("RequestExtension request ID: %s", requestID)
 	request := new(RequestsInfo)
-	err := c.jsonAPI("POST", "/czds/requests/extension/"+requestID, emptyStruct, request)
+	err := c.jsonAPI(ctx, http.MethodPost, "/czds/requests/extension/"+requestID, emptyStruct, request)
 	return request, err
 }
 
 // DownloadAllRequests outputs the contents of the CSV file downloaded by
 // the "Download All Requests" button on the CZDS portal to the provided output
+//
+// Deprecated: Use DownloadAllRequestsWithContext
 func (c *Client) DownloadAllRequests(output io.Writer) error {
+	return c.DownloadAllRequestsWithContext(context.Background(), output)
+}
+
+func (c *Client) DownloadAllRequestsWithContext(ctx context.Context, output io.Writer) error {
 	c.v("DownloadAllRequests")
 	url := c.BaseURL + "/czds/requests/report"
-	resp, err := c.apiRequest(true, "GET", url, nil)
+	resp, err := c.apiRequest(ctx, true, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -249,10 +299,16 @@ func (c *Client) DownloadAllRequests(output io.Writer) error {
 
 // RequestTLDs is a helper function that requests access to the provided TLDs with the provided reason
 // TLDs provided should be marked as able to request from GetTLDStatus()
+//
+// Deprecated: Use RequestTLDsWithContext
 func (c *Client) RequestTLDs(tlds []string, reason string) error {
+	return c.RequestTLDsWithContext(context.Background(), tlds, reason)
+}
+
+func (c *Client) RequestTLDsWithContext(ctx context.Context, tlds []string, reason string) error {
 	c.v("RequestTLDs TLDS: %+v", tlds)
 	// get terms
-	terms, err := c.GetTerms()
+	terms, err := c.GetTermsWithContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -263,27 +319,46 @@ func (c *Client) RequestTLDs(tlds []string, reason string) error {
 		Reason:    reason,
 		TcVersion: terms.Version,
 	}
-	err = c.SubmitRequest(request)
+	err = c.SubmitRequestWithContext(ctx, request)
 	return err
 }
 
 // RequestAllTLDs is a helper function to request access to all available TLDs with the provided reason
+//
+// Deprecated: Use RequestAllTLDsExceptWithContext
 func (c *Client) RequestAllTLDs(reason string) ([]string, error) {
-	return c.RequestAllTLDsExcept(reason, nil)
+	return c.RequestAllTLDsExceptWithContext(context.Background(), reason, nil)
 }
 
-// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason, excluding the TLDs listed in the except parameter.
+func (c *Client) RequestAllTLDsWithContext(ctx context.Context, reason string) ([]string, error) {
+	return c.RequestAllTLDsExceptWithContext(ctx, reason, nil)
+}
+
+// RequestAllTLDsExcept is a helper function to request access to all available TLDs with the provided reason,
+// excluding the TLDs listed in the except parameter.
+//
+// Deprecated: Use RequestAllTLDsExceptWithContext
 func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string, error) {
+	return c.RequestAllTLDsExceptWithContext(context.Background(), reason, except)
+}
+
+func (c *Client) RequestAllTLDsExceptWithContext(ctx context.Context, reason string, except []string) ([]string, error) {
 	c.v("RequestAllTLDs")
 	exceptMap := slice2LowerMap(except)
 	// get available to request
-	status, err := c.GetTLDStatus()
+	status, err := c.GetTLDStatusWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	// check to see if any available to request
 	requestTLDs := make([]string, 0, 10)
 	for _, tld := range status {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		if exceptMap[tld.TLD] {
 			// skip over excluded TLDs
 			continue
@@ -300,7 +375,7 @@ func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string,
 	}
 
 	// get terms
-	terms, err := c.GetTerms()
+	terms, err := c.GetTermsWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -313,21 +388,27 @@ func (c *Client) RequestAllTLDsExcept(reason string, except []string) ([]string,
 		TcVersion: terms.Version,
 	}
 	c.v("Requesting %d TLDs %+v", len(requestTLDs), requestTLDs)
-	err = c.SubmitRequest(request)
+	err = c.SubmitRequestWithContext(ctx, request)
 	return requestTLDs, err
 }
 
 // ExtendTLD is a helper function that requests extensions to the provided TLD
 // TLDs provided should be marked as Extensible from GetRequestInfo()
+//
+// Deprecated: Use ExtendTLDWithContext
 func (c *Client) ExtendTLD(tld string) error {
+	return c.ExtendTLDWithContext(context.Background(), tld)
+}
+
+func (c *Client) ExtendTLDWithContext(ctx context.Context, tld string) error {
 	c.v("ExtendTLD: %q", tld)
-	requestID, err := c.GetZoneRequestID(tld)
+	requestID, err := c.GetZoneRequestIDWithContext(ctx, tld)
 	if err != nil {
 		return fmt.Errorf("error GetZoneRequestID(%q): %w", tld, err)
 	}
 	c.v("ExtendTLD: tld: %q requestID: %q", tld, requestID)
 
-	info, err := c.RequestExtension(requestID)
+	info, err := c.RequestExtensionWithContext(ctx, requestID)
 	if err != nil {
 		return fmt.Errorf("RequestExtension(%q): %w", tld, err)
 	}
@@ -340,12 +421,25 @@ func (c *Client) ExtendTLD(tld string) error {
 }
 
 // ExtendAllTLDs is a helper function to request extensions to all TLDs that are extendable
+//
+// Deprecated: Use ExtendAllTLDsExceptWithContext
 func (c *Client) ExtendAllTLDs() ([]string, error) {
-	return c.ExtendAllTLDsExcept(nil)
+	return c.ExtendAllTLDsExceptWithContext(context.Background(), nil)
 }
 
-// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable, excluding any TLDs listed in the except parameter.
+func (c *Client) ExtendAllTLDsWithContext(ctx context.Context) ([]string, error) {
+	return c.ExtendAllTLDsExceptWithContext(ctx, nil)
+}
+
+// ExtendAllTLDsExcept is a helper function to request extensions to all TLDs that are extendable,
+// excluding any TLDs listed in the except parameter.
+//
+// Deprecated: Use ExtendAllTLDsExceptWithContext
 func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
+	return c.ExtendAllTLDsExceptWithContext(context.Background(), except)
+}
+
+func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []string) ([]string, error) {
 	c.v("ExtendAllTLDs")
 	tlds := make([]string, 0, 10)
 	toExtend := make([]Request, 0, 10)
@@ -368,21 +462,36 @@ func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
 
 	// test if a request is extensible
 	isExtensible := func(id string) (bool, error) {
-		info, err := c.GetRequestInfo(id)
+		info, err := c.GetRequestInfoWithContext(ctx, id)
 		return info.Extensible, err
 	}
 
 	// get all pages of requests and check which ones are extendable
 	morePages := true
 	for morePages {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		c.v("ExtendAllTLDs requesting %d requests on page %d", filter.Pagination.Size, filter.Pagination.Page)
-		req, err := c.GetRequests(&filter)
+		req, err := c.GetRequestsWithContext(ctx, &filter)
 		if err != nil {
 			return tlds, err
 		}
+
+		now := time.Now()
+
 		for _, r := range req.Requests {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
 			// check for break early
-			if expiryDateThreshold > 0 && r.Expired.After(time.Now().AddDate(0, 0, expiryDateThreshold)) {
+			if expiryDateThreshold > 0 && r.Expired.After(now.AddDate(0, 0, expiryDateThreshold)) {
 				c.v("request %q: %q expires on %s, > %d days threshold, looking no further", r.TLD, r.RequestID, r.Expired.Format(time.ANSIC), expiryDateThreshold)
 				morePages = false
 				break
@@ -406,11 +515,16 @@ func (c *Client) ExtendAllTLDsExcept(except []string) ([]string, error) {
 	// perform extend
 	c.v("requesting extensions for %d tlds: %+v", len(toExtend), toExtend)
 	for _, r := range toExtend {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		if exceptMap[r.TLD] {
 			// skip over excluded TLDs
 			continue
 		}
-		_, err := c.RequestExtension(r.RequestID)
+		_, err := c.RequestExtensionWithContext(ctx, r.RequestID)
 		if err != nil {
 			return tlds, err
 		}

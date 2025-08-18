@@ -1,9 +1,11 @@
 package czds
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"mime"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -18,9 +20,15 @@ type DownloadInfo struct {
 
 // DownloadZoneToWriter is analogous to DownloadZone but writes to a provided io.Writer instead of a file.
 // It returns the number of bytes written to dest and any error that was encountered.
+//
+// Deprecated: Use DownloadZoneToWriterWithContext
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
+	return c.DownloadZoneToWriterWithContext(context.Background(), url, dest)
+}
+
+func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string, dest io.Writer) (int64, error) {
 	c.v("downloading zone from %q", url)
-	resp, err := c.apiRequest(true, "GET", url, nil)
+	resp, err := c.apiRequest(ctx, true, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -29,7 +37,7 @@ func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error)
 			c.v("Error closing response body: %v", err)
 		}
 	}()
-	w, err := io.Copy(dest, resp.Body)
+	w, err := io.Copy(dest, NewReaderCtx(ctx, resp.Body))
 	if err != nil {
 		return w, err
 	}
@@ -43,7 +51,13 @@ func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error)
 
 // DownloadZone downloads the zone file from the given zone download URL (retrieved from GetLinks) and
 // saves it to the specified destination path.
+//
+// Deprecated: Use DownloadZoneWithContext
 func (c *Client) DownloadZone(url, destinationPath string) error {
+	return c.DownloadZoneWithContext(context.Background(), url, destinationPath)
+}
+
+func (c *Client) DownloadZoneWithContext(ctx context.Context, url, destinationPath string) error {
 	// start the file download
 	file, err := os.Create(destinationPath)
 	if err != nil {
@@ -55,7 +69,7 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 		}
 	}()
 
-	n, err := c.DownloadZoneToWriter(url, file)
+	n, err := c.DownloadZoneToWriterWithContext(ctx, url, file)
 	if err != nil {
 		if removeErr := os.Remove(destinationPath); removeErr != nil {
 			c.v("Error removing file %s: %v", destinationPath, removeErr)
@@ -74,9 +88,15 @@ func (c *Client) DownloadZone(url, destinationPath string) error {
 
 // GetDownloadInfo performs a HEAD request to the zone at url and populates a DownloadInfo struct
 // with the information returned by the headers
+//
+// Deprecated: Use GetDownloadInfoWithContext
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
+	return c.GetDownloadInfoWithContext(context.Background(), url)
+}
+
+func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*DownloadInfo, error) {
 	c.v("GetDownloadInfo for %q", url)
-	resp, err := c.apiRequest(true, "HEAD", url, nil)
+	resp, err := c.apiRequest(ctx, true, "HEAD", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,10 +139,16 @@ func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 }
 
 // GetLinks returns the download links available to the authenticated user.
+//
+// Deprecated: Use GetLinksWithContext
 func (c *Client) GetLinks() ([]string, error) {
+	return c.GetLinksWithContext(context.Background())
+}
+
+func (c *Client) GetLinksWithContext(ctx context.Context) ([]string, error) {
 	links := make([]string, 0, 10)
 	c.v("GetLinks called")
-	err := c.jsonAPI("GET", "/czds/downloads/links", nil, &links)
+	err := c.jsonAPI(ctx, http.MethodGet, "/czds/downloads/links", nil, &links)
 	if err != nil {
 		return nil, err
 	}

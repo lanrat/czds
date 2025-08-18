@@ -3,6 +3,7 @@ package czds
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -72,15 +73,15 @@ func NewClient(username, password string) *Client {
 	return client
 }
 
-// checkAuth does NOT make network requests if the auth is valid
-func (c *Client) checkAuth() error {
+// checkAuth does NOT make network requests if the auth is believed to be valid
+func (c *Client) checkAuth(ctx context.Context) error {
 	// uses a mutex to prevent multiple threads from authenticating at the same time
 	c.authMutex.Lock()
 	defer c.authMutex.Unlock()
 	if c.auth.AccessToken == "" {
 		// no token yet
 		c.v("no auth token")
-		return c.Authenticate()
+		return c.AuthenticateWithContext(ctx)
 	}
 	if time.Now().After(c.authExp) {
 		// token expired, renew
@@ -98,11 +99,10 @@ func (c *Client) httpClient() *http.Client {
 }
 
 // apiRequest makes a request to the client's API endpoint
-// TODO: Add optional context to requests for better cancellation support
-func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*http.Response, error) {
+func (c *Client) apiRequest(ctx context.Context, auth bool, method, url string, request io.Reader) (*http.Response, error) {
 	c.v("HTTP API Request: %s %q", method, url)
 	if auth {
-		err := c.checkAuth()
+		err := c.checkAuth(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,14 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 	var req *http.Request
 	var resp *http.Response
 	for try := 1; try <= totalTrys; try++ {
-		req, err = http.NewRequest(method, url, request)
+		// check context
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+		// perform http request
+		req, err = http.NewRequestWithContext(ctx, method, url, request)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +140,11 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 
 		// sleep only if we will try again
 		if try < totalTrys {
-			time.Sleep(time.Second * 10)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Second * 10):
+			}
 		}
 	}
 
@@ -141,12 +152,12 @@ func (c *Client) apiRequest(auth bool, method, url string, request io.Reader) (*
 }
 
 // jsonAPI performs an authenticated JSON API request
-func (c *Client) jsonAPI(method, path string, request, response interface{}) error {
-	return c.jsonRequest(true, method, c.BaseURL+path, request, response)
+func (c *Client) jsonAPI(ctx context.Context, method, path string, request, response interface{}) error {
+	return c.jsonRequest(ctx, true, method, c.BaseURL+path, request, response)
 }
 
 // jsonRequest performs a request to the API endpoint sending and receiving JSON objects
-func (c *Client) jsonRequest(auth bool, method, url string, request, response interface{}) error {
+func (c *Client) jsonRequest(ctx context.Context, auth bool, method, url string, request, response interface{}) error {
 	var payloadReader io.Reader
 	if request != nil {
 		jsonPayload, err := json.Marshal(request)
@@ -156,7 +167,7 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 		payloadReader = bytes.NewReader(jsonPayload)
 	}
 
-	resp, err := c.apiRequest(auth, method, url, payloadReader)
+	resp, err := c.apiRequest(ctx, auth, method, url, payloadReader)
 	if err != nil {
 		return err
 	}
@@ -192,10 +203,16 @@ func (c *Client) jsonRequest(auth bool, method, url string, request, response in
 
 // Authenticate tests the client's credentials and gets an authentication token from the server.
 // Calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
+//
+// Deprecated: Use AuthenticateWithContext
 func (c *Client) Authenticate() error {
+	return c.AuthenticateWithContext(context.Background())
+}
+
+func (c *Client) AuthenticateWithContext(ctx context.Context) error {
 	c.v("authenticating")
 	authResp := authResponse{}
-	err := c.jsonRequest(false, "POST", c.AuthURL, c.Creds, &authResp)
+	err := c.jsonRequest(ctx, false, http.MethodPost, c.AuthURL, c.Creds, &authResp)
 	if err != nil {
 		return err
 	}
@@ -220,7 +237,13 @@ func (ar *authResponse) getExpiration() (time.Time, error) {
 }
 
 // GetZoneRequestID returns the most recent RequestID for the given zone
+//
+// Deprecated: Use GetZoneRequestIDWithContext
 func (c *Client) GetZoneRequestID(zone string) (string, error) {
+	return c.GetZoneRequestIDWithContext(context.Background(), zone)
+}
+
+func (c *Client) GetZoneRequestIDWithContext(ctx context.Context, zone string) (string, error) {
 	c.v("GetZoneRequestID: %q", zone)
 	zone = strings.ToLower(zone)
 
@@ -248,7 +271,7 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	}
 
 	// get all requests matching filter
-	requests, err := c.GetRequests(&filter)
+	requests, err := c.GetRequestsWithContext(ctx, &filter)
 	if err != nil {
 		return "", err
 	}
@@ -256,9 +279,16 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 	request := findFirstZoneInRequests(zone, requests)
 	// if zone is not found in requests, and there are more requests to get, iterate through them
 	for request == nil && len(requests.Requests) != 0 {
+		// check context
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
 		filter.Pagination.Page++
 		c.v("GetZoneRequestID: zone %q not found yet, requesting page %d", zone, filter.Pagination.Page)
-		requests, err = c.GetRequests(&filter)
+		requests, err = c.GetRequestsWithContext(ctx, &filter)
 		if err != nil {
 			return "", err
 		}
@@ -274,7 +304,13 @@ func (c *Client) GetZoneRequestID(zone string) (string, error) {
 // GetAllRequests returns the request information for all requests with the given status.
 // Status should be one of the constant czds.Status* strings.
 // Warning: for a large number of results, may be slow.
+//
+// Deprecated: Use GetAllRequestsWithContext
 func (c *Client) GetAllRequests(status string) ([]Request, error) {
+	return c.GetAllRequestsWithContext(context.Background(), status)
+}
+
+func (c *Client) GetAllRequestsWithContext(ctx context.Context, status string) ([]Request, error) {
 	c.v("GetAllRequests status: %q", status)
 	const pageSize = 100
 	filter := RequestsFilter{
@@ -292,16 +328,21 @@ func (c *Client) GetAllRequests(status string) ([]Request, error) {
 
 	out := make([]Request, 0, 100)
 	c.v("GetAllRequests status: %q, page %d", status, filter.Pagination.Page)
-	requests, err := c.GetRequests(&filter)
+	requests, err := c.GetRequestsWithContext(ctx, &filter)
 	if err != nil {
 		return out, err
 	}
 
 	for len(requests.Requests) != 0 {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		c.v("GetAllRequests status: %q, page %d", status, filter.Pagination.Page)
 		out = append(out, requests.Requests...)
 		filter.Pagination.Page++
-		requests, err = c.GetRequests(&filter)
+		requests, err = c.GetRequestsWithContext(ctx, &filter)
 		if err != nil {
 			return out, err
 		}
