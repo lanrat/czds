@@ -7,6 +7,8 @@
     "language": "en",
     // words - list of words to be always considered correct
     "words": [
+        "aigo",
+        "barclaycard",
         "buildx",
         "czds",
         "Getpass",
@@ -14,9 +16,12 @@
         "golangci",
         "GOPROXY",
         "goreleaser",
+        "icann",
         "lanrat",
         "ldflags",
         "lpass",
+        "mxtq",
+        "onyourside",
         "passfrom",
         "passin",
         "redownload",
@@ -24,7 +29,8 @@
         "tlds",
         "trimpath",
         "Trys",
-        "tzdata"
+        "tzdata",
+        "дети"
     ],
     // flagWords - list of words to be always considered incorrect
     // This is useful for offensive words and common spelling errors.
