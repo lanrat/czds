@@ -466,7 +466,7 @@ func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, conten
 
 	if !quiet {
 		delta := time.Since(start).Round(time.Millisecond)
-		fmt.Printf("Downloaded %s in %s\n", zi.Name, delta)
+		fmt.Printf("Downloaded %s (%s) in %s\n", zi.Name, formatBytes(n), delta)
 	}
 	return nil
 }
