@@ -7,11 +7,24 @@
     "language": "en",
     // words - list of words to be always considered correct
     "words": [
+        "buildx",
         "czds",
+        "Getpass",
+        "goarch",
+        "golangci",
+        "GOPROXY",
+        "goreleaser",
+        "lanrat",
+        "ldflags",
+        "lpass",
+        "passfrom",
+        "passin",
         "redownload",
         "redownloading",
         "tlds",
-        "Trys"
+        "trimpath",
+        "Trys",
+        "tzdata"
     ],
     // flagWords - list of words to be always considered incorrect
     // This is useful for offensive words and common spelling errors.

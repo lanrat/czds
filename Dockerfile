@@ -1,22 +1,23 @@
 # build stage
-FROM golang:alpine AS czds-build-env
+FROM golang:alpine AS build-env
 RUN apk update && apk add --no-cache make git
 
-WORKDIR /go/app/
+# Accept VERSION as a build argument
+ARG VERSION
+ENV VERSION=${VERSION}
 
+WORKDIR /go/app/
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN make -j $(nproc)
+RUN make
 
 # final stage
 FROM alpine
 RUN apk update && apk add --no-cache tzdata ca-certificates
-COPY --from=czds-build-env /go/app/bin/* /usr/local/bin/
+COPY --from=build-env /go/app/czds /bin/
 
-WORKDIR /zones
-RUN chown 1000:1000 $(pwd)
 USER 1000
 
-CMD [ "czds-dl" ]
+ENTRYPOINT [ "czds" ]

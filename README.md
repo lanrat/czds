@@ -10,11 +10,13 @@ using both the documented and undocumented API endpoints
 
 Should allow you to perform almost any action you can in the web interface via [this API](https://pkg.go.dev/github.com/lanrat/czds)
 
-## CZDS-DL
+## CZDS CLI
 
-Implements a client for the officially documented [CZDS REST API](https://github.com/icann/czds-api-client-java/blob/master/docs/ICANN_CZDS_api.pdf)
+A unified command-line interface that provides all functionality through subcommands:
 
-### Download zone files from [czds.icann.org](https://czds.icann.org) in parallel
+- `download` (alias: `dl`) - Download zone files from [czds.icann.org](https://czds.icann.org)
+- `request` (alias: `req`) - Submit new zone requests or modify existing ones
+- `status` (alias: `st`) - View information about zone file requests
 
 ### Features
 
@@ -28,7 +30,23 @@ Implements a client for the officially documented [CZDS REST API](https://github
 ### Usage
 
 ```console
-Usage of czds-dl:
+Usage: czds <subcommand> [flags]
+
+Subcommands:
+  download, dl    Download zone files
+  request, req    Submit or modify zone requests
+  status, st      View zone request information
+  help           Show help information
+```
+
+## Download Subcommand
+
+Download zone files from CZDS in parallel.
+
+### Usage
+
+```console
+Usage of czds download:
   -exclude string
         don't fetch these zones
   -force
@@ -37,7 +55,7 @@ Usage of czds-dl:
         path to save downloaded zones to (default ".")
   -parallel uint
         number of zones to download in parallel (default 5)
-  -passin
+  -passin string
         password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
@@ -53,8 +71,6 @@ Usage of czds-dl:
         username to authenticate with
   -verbose
         enable verbose logging
-  -version
-        print version and exit
   -zone string
         comma separated list of zones to download, defaults to all
 ```
@@ -62,7 +78,7 @@ Usage of czds-dl:
 ### Example
 
 ```shell
-$ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
+$ ./czds download -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:51 Authenticating to https://account-api.icann.org/api/authenticate
 2019/01/12 16:23:52 'zones' does not exist, creating
 2019/01/12 16:23:52 requesting download links
@@ -75,14 +91,14 @@ $ ./czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
 2019/01/12 16:23:54 downloading 'https://czds-api.icann.org/czds/downloads/example5.zone'
 ```
 
-## CZDS-REQUEST
+## Request Subcommand
 
 Submit a new zone request or modify an existing CZDS request. Be sure to view and accept the terms and conditions with the `-terms` flag.
 
 ### Usage
 
 ```text
-Usage of czds-request:
+Usage of czds request:
   -cancel string
         comma separated list of zones to cancel outstanding requests for
   -exclude string
@@ -91,7 +107,7 @@ Usage of czds-request:
         comma separated list of zones to request extensions
   -extend-all
         extend all possible zones
-  -passin
+  -passin string
         password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
@@ -109,8 +125,6 @@ Usage of czds-request:
         username to authenticate with
   -verbose
         enable verbose logging
-  -version
-        print version and exit
 ```
 
 ### Example
@@ -119,7 +133,7 @@ View zones able to be requested, prompting the user
 interactively for their password:
 
 ```text
-./czds-request -username "$USERNAME" -passin "tty" -status  | grep -v pending | grep -v approved
+./czds request -username "$USERNAME" -passin "tty" -status  | grep -v pending | grep -v approved
 Password:
 ```
 
@@ -127,29 +141,30 @@ Request access to new zones, reading the user's
 password from the file `~/.czds.pass`:
 
 ```text
-./czds-request -username "$USERNAME" -passin "file:~/.czds.pass" -request "red,blue,xyz" -reason "$REASON"
+./czds request -username "$USERNAME" -passin "file:~/.czds.pass" -request "red,blue,xyz" -reason "$REASON"
 ```
 
 Request access to all zones:
 
 ```text
-./czds-request -username "$USERNAME" -passin "tty" -request-all -reason "$REASON"
+./czds request -username "$USERNAME" -passin "tty" -request-all -reason "$REASON"
 Password:
 ```
 
-## CZDS-STATUS
+## Status Subcommand
 
 View information about current zone file requests
 
 ### Usage
 
-By default czds-requests prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
+By default the status subcommand prints high-level information about all czds requests, like the [reports page](https://czds.icann.org/zone-requests/all) on czds.
 Detailed information about a particular zone can be displayed with the `-zone` or `-id` flag.
 
 ```text
+Usage of czds status:
   -id string
         ID of specific zone request to lookup, defaults to printing all
-  -passin
+  -passin string
         password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)
   -password string
         password to authenticate with
@@ -159,8 +174,6 @@ Detailed information about a particular zone can be displayed with the `-zone` o
         username to authenticate with
   -verbose
         enable verbose logging
-  -version
-        print version and exit
   -zone string
         same as -id, but prints the request by zone name
 ```
@@ -170,7 +183,7 @@ Detailed information about a particular zone can be displayed with the `-zone` o
 Show all requests:
 
 ```text
-$ ./czds-status -username "$USERNAME" -password "$PASSWORD"
+$ ./czds status -username "$USERNAME" -password "$PASSWORD"
 TLD     ID      UnicodeTLD      Status  Created Updated Expires SFTP
 xn--mxtq1m	e59839f1-d69d-4970-9a15-7b49f3592065	政府	Approved	Wed Jan 30 08:00:42 2019	Wed Jan 30 08:53:41 2019	Sat Jan 12 08:53:41 2030	false
 aigo	c6886423-b67d-43b6-828f-9d5a6cb3e6a3	aigo	Pending	Wed Jan 30 08:00:41 2019	Wed Jan 30 08:01:38 2019		false
@@ -185,7 +198,7 @@ xn--d1acj3b	69929632-ed92-437a-b140-fff4b0d771a7	дети	Approved	Wed Jan 30 08
 Lookup specific request details:
 
 ```console
-$ ./czds-status -username "$USERNAME" -password "$PASSWORD" -zone red
+$ ./czds status -username "$USERNAME" -password "$PASSWORD" -zone red
 ID:     a056b38d-0080-4097-95cb-014b35ed4cb7
 TLD:    red (red)
 Status: approved
@@ -213,5 +226,5 @@ make
 ## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
 ```console
-docker run --rm -v /path/to/zones/:/zones lanrat/czds czds-dl -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones lanrat/czds czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
