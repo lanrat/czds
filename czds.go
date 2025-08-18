@@ -32,8 +32,32 @@ const (
 )
 
 var (
-	defaultHTTPClient = &http.Client{}
+	defaultHTTPClient = createOptimizedHTTPClient()
+	// bufferPool provides reusable buffers for file I/O operations to reduce allocations
+	bufferPool = sync.Pool{
+		New: func() interface{} {
+			// 64KB buffer size - good balance between memory usage and I/O efficiency
+			return make([]byte, 64*1024)
+		},
+	}
 )
+
+// createOptimizedHTTPClient creates an HTTP client optimized for CZDS operations
+// with connection pooling and keep-alive settings.
+func createOptimizedHTTPClient() *http.Client {
+	transport := &http.Transport{
+		// Connection pooling settings - optimized for concurrent downloads to same hosts
+		IdleConnTimeout: 90 * time.Second, // How long idle connections stay open
+
+		// Compression - ensure gzip is enabled for better transfer efficiency
+		DisableCompression: false,
+	}
+
+	return &http.Client{
+		Transport: transport,
+		// No timeout set here - let context control request timeouts
+	}
+}
 
 // Client stores all session information for czds authentication
 // and manages token renewal

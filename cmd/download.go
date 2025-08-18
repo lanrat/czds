@@ -160,9 +160,9 @@ func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfi
 	// Shuffle download links to better distribute load on CZDS
 	downloads = shuffle(downloads)
 
-	// Set up channels and sync
+	// Set up channels and sync - buffer channel based on parallel workers for better throughput
 	loadDone := make(chan bool)
-	inputChan := make(chan *zoneInfo, 100)
+	inputChan := make(chan *zoneInfo, int(config.Parallel)*2)
 	g, ctx := errgroup.WithContext(ctx)
 
 	// Start workers
@@ -432,6 +432,7 @@ func pruneLinks(downloads []string, exclude string) []string {
 		excludeSuffixes[i] = strings.TrimSpace(e) + ".zone"
 	}
 
+	// Pre-allocate with exact capacity since we know the maximum possible size
 	newlist := make([]string, 0, len(downloads))
 	for _, u := range downloads {
 		found := false

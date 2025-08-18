@@ -1,6 +1,7 @@
 package czds
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -39,7 +40,9 @@ func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string
 			c.v("Error closing response body: %v", err)
 		}
 	}()
-	w, err := io.Copy(dest, newReaderCtx(ctx, resp.Body))
+
+	// Use buffer pool for more efficient copying
+	w, err := copyWithBuffer(dest, newReaderCtx(ctx, resp.Body))
 	if err != nil {
 		return w, err
 	}
@@ -50,6 +53,15 @@ func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string
 		return w, fmt.Errorf("downloaded bytes: %d, while request content-length is: %d ", w, resp.ContentLength)
 	}
 	return w, nil
+}
+
+// copyWithBuffer copies from src to dst using a pooled buffer for better performance
+func copyWithBuffer(dst io.Writer, src io.Reader) (int64, error) {
+	// Get buffer from pool
+	buf := bufferPool.Get().([]byte)
+	defer bufferPool.Put(buf)
+
+	return io.CopyBuffer(dst, src, buf)
 }
 
 // DownloadZone downloads a zone file from the given URL and saves it to the specified file path.
@@ -74,7 +86,15 @@ func (c *Client) DownloadZoneWithContext(ctx context.Context, url, destinationPa
 		}
 	}()
 
-	n, err := c.DownloadZoneToWriterWithContext(ctx, url, file)
+	// Use buffered writer for better I/O performance on large files
+	bufferedWriter := bufio.NewWriterSize(file, 64*1024) // 64KB buffer
+	defer func() {
+		if flushErr := bufferedWriter.Flush(); flushErr != nil {
+			c.v("Error flushing buffered writer: %v", flushErr)
+		}
+	}()
+
+	n, err := c.DownloadZoneToWriterWithContext(ctx, url, bufferedWriter)
 	if err != nil {
 		if removeErr := os.Remove(destinationPath); removeErr != nil {
 			c.v("Error removing file %s: %v", destinationPath, removeErr)
@@ -163,7 +183,8 @@ func (c *Client) GetLinks() ([]string, error) {
 // It returns a slice of URLs that can be used with the download functions.
 // The operation can be cancelled using the provided context.
 func (c *Client) GetLinksWithContext(ctx context.Context) ([]string, error) {
-	links := make([]string, 0, 10)
+	// Pre-allocate with more realistic capacity - most users have access to 50-500+ zones
+	links := make([]string, 0, 100)
 	c.v("GetLinks called")
 	err := c.jsonAPI(ctx, http.MethodGet, "/czds/downloads/links", nil, &links)
 	if err != nil {

@@ -305,6 +305,7 @@ func (c *Client) DownloadAllRequestsWithContext(ctx context.Context, output io.W
 		}
 	}()
 
+	// TODO add context here
 	n, err := io.Copy(output, resp.Body)
 	if err != nil {
 		return err
