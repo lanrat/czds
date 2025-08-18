@@ -8,7 +8,7 @@ BUILD_FLAGS := -trimpath -ldflags "-s -w -X main.version=${VERSION}"
 SOURCES := $(shell find . -type f -name "*.go") go.mod go.sum
 
 czds: $(SOURCES)
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o $@ cmd/czds/*.go
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o $@ cmd/*.go
 
 .PHONY: docker
 docker: Dockerfile Makefile $(SOURCES)
