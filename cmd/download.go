@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -34,6 +35,7 @@ type DownloadConfig struct {
 	Retries    uint     // Maximum number of retry attempts per zone
 	Zone       string   // Single zone to download (deprecated, use Zones)
 	Quiet      bool     // Suppress non-error output
+	Progress   bool     // Show progress for large file downloads
 	Zones      []string // List of zones to download (from command line args)
 }
 
@@ -67,6 +69,7 @@ func downloadCmd() *Command {
 	fs.UintVar(&config.Retries, "retries", 3, "max retry attempts per zone file download")
 	fs.StringVar(&config.Zone, "zone", "", "comma separated list of zones to download, defaults to all")
 	fs.BoolVar(&config.Quiet, "quiet", false, "suppress progress printing")
+	fs.BoolVar(&config.Progress, "progress", false, "show download progress for large files (>50MB)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: czds download [OPTIONS] [zones...]\n\n")
@@ -79,6 +82,7 @@ func downloadCmd() *Command {
 		fmt.Fprintf(os.Stderr, "  czds download -parallel 10 -out ./zones     # Download with 10 parallel workers\n")
 		fmt.Fprintf(os.Stderr, "  czds download -force -zone com               # Force redownload of com zone\n")
 		fmt.Fprintf(os.Stderr, "  czds download -exclude com,net               # Download all except com and net\n")
+		fmt.Fprintf(os.Stderr, "  czds download -progress -zone com            # Download with progress reporting\n")
 		fmt.Fprintf(os.Stderr, "\nZones can also be specified as positional arguments:\n")
 		fmt.Fprintf(os.Stderr, "  czds download com org net                    # Download com, org, and net zones\n")
 	}
@@ -354,7 +358,7 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 		if verbose {
 			fmt.Printf("Forcing download of '%s'\n", zi.Dl)
 		}
-		return downloadTime(ctx, client, zi, config.Quiet)
+		return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
 	}
 
 	// check if local file already exists
@@ -366,7 +370,7 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 				fmt.Printf("Size of local file (%d) differs from remote (%d), redownloading %s\n",
 					localFileInfo.Size(), info.ContentLength, localFileName)
 			}
-			return downloadTime(ctx, client, zi, config.Quiet)
+			return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
 		}
 		// check local file modification date
 		if localFileInfo.ModTime().Before(info.LastModified) {
@@ -374,7 +378,7 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 			if verbose {
 				fmt.Println("Remote file is newer than local, redownloading")
 			}
-			return downloadTime(ctx, client, zi, config.Quiet)
+			return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
 		}
 		// local copy is good, skip download
 		if verbose {
@@ -385,21 +389,73 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 
 	if os.IsNotExist(err) {
 		// file does not exist, download
-		return downloadTime(ctx, client, zi, config.Quiet)
+		return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
 	}
 
 	return err
 }
 
 // downloadTime downloads a zone file and reports the time taken for the operation.
-// It provides timing feedback unless quiet mode is enabled.
-func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, quiet bool) error {
-	// file does not exist, download
-	start := time.Now()
-	err := client.DownloadZoneWithContext(ctx, zi.Dl, zi.FullPath)
+// It provides timing feedback and progress reporting unless quiet mode is enabled.
+// Uses atomic file operations - downloads to a temporary file first, then renames on success.
+func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, contentLength int64, quiet, showProgress bool) error {
+	// Create temporary file in same directory for atomic operation
+	tempPath := zi.FullPath + ".tmp"
+	file, err := os.Create(tempPath)
 	if err != nil {
 		return err
 	}
+
+	var downloadErr error
+	defer func() {
+		// Always close file first
+		if closeErr := file.Close(); closeErr != nil && !quiet {
+			fmt.Printf("Error closing file: %v\n", closeErr)
+		}
+
+		// Handle cleanup and atomic rename
+		if downloadErr != nil {
+			// Remove temp file on error
+			if removeErr := os.Remove(tempPath); removeErr != nil && !quiet {
+				fmt.Printf("Error removing temp file %s: %v\n", tempPath, removeErr)
+			}
+		} else {
+			// Atomically rename temp file to final name on success
+			if renameErr := os.Rename(tempPath, zi.FullPath); renameErr != nil {
+				downloadErr = fmt.Errorf("failed to rename temp file: %w", renameErr)
+				// Clean up temp file if rename fails
+				if removeErr := os.Remove(tempPath); removeErr != nil && !quiet {
+					fmt.Printf("Error removing temp file after rename failure %s: %v\n", tempPath, removeErr)
+				}
+			}
+		}
+	}()
+
+	// Use buffered writer for better I/O performance
+	bufferedWriter := bufio.NewWriterSize(file, 64*1024) // 64KB buffer
+
+	// Wrap with progress writer for large files (only if progress flag is enabled)
+	progressWriter := newProgressWriter(bufferedWriter, contentLength, zi.Name, quiet || !showProgress)
+
+	// Download with progress reporting
+	start := time.Now()
+	n, err := client.DownloadZoneToWriterWithContext(ctx, zi.Dl, progressWriter)
+	if err != nil {
+		downloadErr = err
+		return err
+	}
+
+	// Flush buffered writer before checking file size
+	if flushErr := bufferedWriter.Flush(); flushErr != nil {
+		downloadErr = fmt.Errorf("failed to flush buffer: %w", flushErr)
+		return downloadErr
+	}
+
+	if n == 0 {
+		downloadErr = fmt.Errorf("%s was empty", zi.Name)
+		return downloadErr
+	}
+
 	if !quiet {
 		delta := time.Since(start).Round(time.Millisecond)
 		fmt.Printf("Downloaded %s in %s\n", zi.Name, delta)
@@ -425,24 +481,21 @@ func pruneLinks(downloads []string, exclude string) []string {
 		return downloads
 	}
 
-	// Pre-compute excluded suffixes once
-	excludeList := strings.Split(exclude, ",")
-	excludeSuffixes := make([]string, len(excludeList))
-	for i, e := range excludeList {
-		excludeSuffixes[i] = strings.TrimSpace(e) + ".zone"
+	// Parse exclude list into map for O(1) lookups
+	excludeMap := excludeListToMap(exclude)
+	if excludeMap == nil {
+		return downloads
 	}
 
 	// Pre-allocate with exact capacity since we know the maximum possible size
 	newlist := make([]string, 0, len(downloads))
 	for _, u := range downloads {
-		found := false
-		for _, suffix := range excludeSuffixes {
-			if strings.HasSuffix(u, suffix) {
-				found = true
-				break
-			}
-		}
-		if !found {
+		// Extract zone name from URL (e.g., "com.zone" -> "com")
+		fileName := path.Base(u)
+		zoneName := strings.TrimSuffix(fileName, ".zone")
+
+		// O(1) lookup instead of O(n*m) string suffix matching
+		if !excludeMap[strings.ToLower(zoneName)] {
 			newlist = append(newlist, u)
 		}
 	}

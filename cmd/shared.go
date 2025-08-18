@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/lanrat/czds"
@@ -98,4 +99,23 @@ func getContext() context.Context {
 	}()
 
 	return ctx
+}
+
+// excludeListToMap parses a comma-separated exclude string into a map for O(1) lookups.
+// It trims whitespace and converts to lowercase for case-insensitive matching.
+func excludeListToMap(excludeStr string) map[string]bool {
+	if excludeStr == "" {
+		return nil
+	}
+
+	excludeList := strings.Split(excludeStr, ",")
+	out := make(map[string]bool, len(excludeList))
+
+	for _, s := range excludeList {
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			out[strings.ToLower(trimmed)] = true
+		}
+	}
+	return out
 }
