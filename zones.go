@@ -20,12 +20,15 @@ type DownloadInfo struct {
 
 // DownloadZoneToWriter is analogous to DownloadZone but writes to a provided io.Writer instead of a file.
 // It returns the number of bytes written to dest and any error that was encountered.
+// This function uses a background context.
 //
-// Deprecated: Use DownloadZoneToWriterWithContext
+// Deprecated: Use DownloadZoneToWriterWithContext for context cancellation support.
 func (c *Client) DownloadZoneToWriter(url string, dest io.Writer) (int64, error) {
 	return c.DownloadZoneToWriterWithContext(context.Background(), url, dest)
 }
 
+// DownloadZoneToWriterWithContext downloads a zone file from the given URL and writes it to the provided io.Writer.
+// It returns the number of bytes written and any error encountered. The download can be cancelled using the provided context.
 func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string, dest io.Writer) (int64, error) {
 	c.v("downloading zone from %q", url)
 	resp, err := c.apiRequest(ctx, true, http.MethodGet, url, nil)
@@ -50,13 +53,15 @@ func (c *Client) DownloadZoneToWriterWithContext(ctx context.Context, url string
 }
 
 // DownloadZone downloads the zone file from the given zone download URL (retrieved from GetLinks) and
-// saves it to the specified destination path.
+// saves it to the specified destination path. This function uses a background context.
 //
-// Deprecated: Use DownloadZoneWithContext
+// Deprecated: Use DownloadZoneWithContext for context cancellation support.
 func (c *Client) DownloadZone(url, destinationPath string) error {
 	return c.DownloadZoneWithContext(context.Background(), url, destinationPath)
 }
 
+// DownloadZoneWithContext downloads a zone file from the given URL and saves it to the specified file path.
+// The operation can be cancelled using the provided context. If an error occurs, any partially downloaded file is removed.
 func (c *Client) DownloadZoneWithContext(ctx context.Context, url, destinationPath string) error {
 	// start the file download
 	file, err := os.Create(destinationPath)
@@ -87,13 +92,16 @@ func (c *Client) DownloadZoneWithContext(ctx context.Context, url, destinationPa
 }
 
 // GetDownloadInfo performs a HEAD request to the zone at url and populates a DownloadInfo struct
-// with the information returned by the headers
+// with the information returned by the headers. This function uses a background context.
 //
-// Deprecated: Use GetDownloadInfoWithContext
+// Deprecated: Use GetDownloadInfoWithContext for context cancellation support.
 func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 	return c.GetDownloadInfoWithContext(context.Background(), url)
 }
 
+// GetDownloadInfoWithContext retrieves metadata about a zone file download without downloading the file itself.
+// It performs a HEAD request to get information like file size, last modified time, and filename.
+// The operation can be cancelled using the provided context.
 func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*DownloadInfo, error) {
 	c.v("GetDownloadInfo for %q", url)
 	resp, err := c.apiRequest(ctx, true, "HEAD", url, nil)
@@ -139,12 +147,16 @@ func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*D
 }
 
 // GetLinks returns the download links available to the authenticated user.
+// This function uses a background context.
 //
-// Deprecated: Use GetLinksWithContext
+// Deprecated: Use GetLinksWithContext for context cancellation support.
 func (c *Client) GetLinks() ([]string, error) {
 	return c.GetLinksWithContext(context.Background())
 }
 
+// GetLinksWithContext retrieves all zone download links available to the authenticated user.
+// It returns a slice of URLs that can be used with the download functions.
+// The operation can be cancelled using the provided context.
 func (c *Client) GetLinksWithContext(ctx context.Context) ([]string, error) {
 	links := make([]string, 0, 10)
 	c.v("GetLinks called")

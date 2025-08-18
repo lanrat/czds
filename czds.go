@@ -203,12 +203,16 @@ func (c *Client) jsonRequest(ctx context.Context, auth bool, method, url string,
 
 // Authenticate tests the client's credentials and gets an authentication token from the server.
 // Calling this is optional. All other functions will check the auth state on their own first and authenticate if necessary.
+// This function uses a background context.
 //
-// Deprecated: Use AuthenticateWithContext
+// Deprecated: Use AuthenticateWithContext for context cancellation support.
 func (c *Client) Authenticate() error {
 	return c.AuthenticateWithContext(context.Background())
 }
 
+// AuthenticateWithContext authenticates the client with CZDS using the provided credentials.
+// It obtains and stores an authentication token that will be used for subsequent API calls.
+// The operation can be cancelled using the provided context.
 func (c *Client) AuthenticateWithContext(ctx context.Context) error {
 	c.v("authenticating")
 	authResp := authResponse{}

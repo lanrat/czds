@@ -162,13 +162,16 @@ type CancelRequestSubmission struct {
 }
 
 // GetRequests searches for the status of zone requests as seen on the
-// CZDS dashboard page "https://czds.icann.org/zone-requests/all"
+// CZDS dashboard page "https://czds.icann.org/zone-requests/all".
+// This function uses a background context.
 //
-// Deprecated: Use GetRequestsWithContext
+// Deprecated: Use GetRequestsWithContext for context cancellation support.
 func (c *Client) GetRequests(filter *RequestsFilter) (*RequestsResponse, error) {
 	return c.GetRequestsWithContext(context.Background(), filter)
 }
 
+// GetRequestsWithContext retrieves zone access requests based on the provided filter criteria.
+// It supports pagination and filtering by status. The operation can be cancelled using the provided context.
 func (c *Client) GetRequestsWithContext(ctx context.Context, filter *RequestsFilter) (*RequestsResponse, error) {
 	c.v("GetRequests filter: %+v", filter)
 	requests := new(RequestsResponse)
@@ -184,6 +187,8 @@ func (c *Client) GetRequestInfo(requestID string) (*RequestsInfo, error) {
 	return c.GetRequestInfoWithContext(context.Background(), requestID)
 }
 
+// GetRequestInfoWithContext retrieves detailed information about a specific zone access request,
+// including its status timeline and history. The operation can be cancelled using the provided context.
 func (c *Client) GetRequestInfoWithContext(ctx context.Context, requestID string) (*RequestsInfo, error) {
 	c.v("GetRequestInfo request ID: %s", requestID)
 	request := new(RequestsInfo)
