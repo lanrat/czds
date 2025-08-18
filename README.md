@@ -268,11 +268,11 @@ make
 Using command-line flags:
 
 ```console
-docker run --rm -v /path/to/zones/:/zones  ghcr.io/lanrat/czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
+docker run --rm -v /path/to/zones/:/zones ghcr.io/lanrat/czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
 ```
 
 Using environment variables:
 
 ```console
-docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD"  ghcr.io/lanrat/czds download
+docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD" ghcr.io/lanrat/czds -out /zones download
 ```
