@@ -1,4 +1,110 @@
 // Package czds implements a client to the CZDS REST API using both the documented and undocumented API endpoints.
+//
+// The CZDS (Centralized Zone Data Service) allows authorized users to access DNS zone files
+// for top-level domains (TLDs). This package provides a complete Go client for downloading
+// zone files, managing access requests, and checking request status.
+//
+// # Basic Usage
+//
+// Create a client and authenticate:
+//
+//	client := czds.NewClient("username", "password")
+//	ctx := context.Background()
+//	err := client.AuthenticateWithContext(ctx)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Downloading Zone Files
+//
+// Download all available zones:
+//
+//	ctx := context.Background()
+//	links, err := client.GetLinksWithContext(ctx)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	
+//	for _, link := range links {
+//		err := client.DownloadZoneWithContext(ctx, link, "zones/")
+//		if err != nil {
+//			log.Printf("Failed to download %s: %v", link, err)
+//		}
+//	}
+//
+// Download a specific zone to a writer:
+//
+//	ctx := context.Background()
+//	var buf bytes.Buffer
+//	bytesWritten, err := client.DownloadZoneToWriterWithContext(ctx, zoneURL, &buf)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Printf("Downloaded %d bytes\n", bytesWritten)
+//
+// # Managing Zone Requests
+//
+// Request access to new zones:
+//
+//	ctx := context.Background()
+//	err := client.RequestTLDsWithContext(ctx, []string{"com", "org"}, "Research purposes")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// Check request status:
+//
+//	ctx := context.Background()
+//	requests, err := client.GetAllRequestsWithContext(ctx, "")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	
+//	for _, req := range requests {
+//		fmt.Printf("Zone: %s, Status: %s\n", req.TLD, req.Status)
+//	}
+//
+// Extend existing requests:
+//
+//	ctx := context.Background()
+//	err := client.ExtendTLDWithContext(ctx, "com")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Context Support
+//
+// All operations support context for cancellation and timeouts:
+//
+//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	defer cancel()
+//	
+//	err := client.AuthenticateWithContext(ctx)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	
+//	links, err := client.GetLinksWithContext(ctx)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// # Error Handling
+//
+// The client automatically handles authentication token refresh during long-running
+// operations. Network errors and API errors are returned as standard Go errors:
+//
+//	if err := client.DownloadZoneWithContext(ctx, url, path); err != nil {
+//		if strings.Contains(err.Error(), "403") {
+//			log.Println("Access denied - check your permissions")
+//		} else if strings.Contains(err.Error(), "network") {
+//			log.Println("Network error - retrying...")
+//		} else {
+//			log.Printf("Unexpected error: %v", err)
+//		}
+//	}
+//
+// For more detailed examples and API documentation, see the individual function documentation.
 package czds
 
 import (
