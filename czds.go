@@ -24,7 +24,7 @@
 //	if err != nil {
 //		log.Fatal(err)
 //	}
-//	
+//
 //	for _, link := range links {
 //		err := client.DownloadZoneWithContext(ctx, link, "zones/")
 //		if err != nil {
@@ -59,7 +59,7 @@
 //	if err != nil {
 //		log.Fatal(err)
 //	}
-//	
+//
 //	for _, req := range requests {
 //		fmt.Printf("Zone: %s, Status: %s\n", req.TLD, req.Status)
 //	}
@@ -78,12 +78,12 @@
 //
 //	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 //	defer cancel()
-//	
+//
 //	err := client.AuthenticateWithContext(ctx)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
-//	
+//
 //	links, err := client.GetLinksWithContext(ctx)
 //	if err != nil {
 //		log.Fatal(err)
