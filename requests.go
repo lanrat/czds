@@ -47,7 +47,7 @@ const (
 	StatusDenied    = "denied"
 	StatusExpired   = "expired"
 	StatusCanceled  = "canceled"
-	StatusRevoked   = "revoked" // TODO unverified
+	StatusRevoked   = "revoked"
 )
 
 // number of days into the future to check zones for expiration extensions.
