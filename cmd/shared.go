@@ -28,10 +28,15 @@ type Command struct {
 	Run         func(ctx context.Context) error
 }
 
-// addGlobalFlags adds the common authentication and verbose flags to a FlagSet
+// addGlobalFlags adds the common authentication and verbose flags to a FlagSet.
+// It checks for CZDS_USERNAME and CZDS_PASSWORD environment variables and uses them as defaults.
 func addGlobalFlags(fs *flag.FlagSet, gf *GlobalFlags) {
-	fs.StringVar(&gf.Username, "username", "", "username to authenticate with")
-	fs.StringVar(&gf.Password, "password", "", "password to authenticate with")
+	// Check for username and password from environment variables first
+	defaultUsername := os.Getenv("CZDS_USERNAME")
+	defaultPassword := os.Getenv("CZDS_PASSWORD")
+
+	fs.StringVar(&gf.Username, "username", defaultUsername, "username to authenticate with (or set CZDS_USERNAME env var)")
+	fs.StringVar(&gf.Password, "password", defaultPassword, "password to authenticate with (or set CZDS_PASSWORD env var)")
 	fs.StringVar(&gf.Passin, "passin", "", "password source (default: prompt on tty; other options: cmd:command, env:var, file:path, keychain:name, lpass:name, op:name)")
 	fs.BoolVar(&gf.Verbose, "verbose", false, "enable verbose logging")
 }

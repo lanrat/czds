@@ -39,6 +39,16 @@ Subcommands:
   help           Show help information
 ```
 
+### Authentication
+
+The czds command supports multiple authentication methods:
+
+1. **Command-line flags**: `-username` and `-password`
+2. **Environment variables**: `CZDS_USERNAME` and `CZDS_PASSWORD`
+3. **Password sources**: `-passin` for reading passwords from various sources
+
+Environment variables are checked first and used as defaults if the corresponding flags are not provided.
+
 ## Download Subcommand
 
 Download zone files from CZDS in parallel.
@@ -75,10 +85,18 @@ Usage of czds download:
         comma separated list of zones to download, defaults to all
 ```
 
-### Example
+### Examples
 
+Using command-line flags:
 ```shell
 $ ./czds download -out /zones -username "$USERNAME" -password "$PASSWORD" -verbose
+```
+
+Using environment variables:
+```shell
+$ export CZDS_USERNAME="your_username"
+$ export CZDS_PASSWORD="your_password"
+$ ./czds download -out /zones -verbose
 2019/01/12 16:23:51 Authenticating to https://account-api.icann.org/api/authenticate
 2019/01/12 16:23:52 'zones' does not exist, creating
 2019/01/12 16:23:52 requesting download links
@@ -225,6 +243,12 @@ make
 
 ## [Docker](https://hub.docker.com/r/lanrat/czds/)
 
+Using command-line flags:
 ```console
 docker run --rm -v /path/to/zones/:/zones lanrat/czds czds download -out /zones -username "$USERNAME" -password "$PASSWORD"
+```
+
+Using environment variables:
+```console
+docker run --rm -v /path/to/zones/:/zones -e CZDS_USERNAME="$USERNAME" -e CZDS_PASSWORD="$PASSWORD" lanrat/czds czds download -out /zones
 ```
