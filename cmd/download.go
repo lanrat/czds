@@ -188,18 +188,8 @@ func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfi
 	case <-loadDone:
 	}
 
-	// Wait for workers with context cancellation check
-	done := make(chan error, 1)
-	go func() {
-		done <- g.Wait()
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case err := <-done:
-		return err
-	}
+	// Wait for workers with proper context cancellation handling
+	return g.Wait()
 }
 
 // getDownloadLinks retrieves the list of zone download URLs based on command configuration.
@@ -431,8 +421,9 @@ func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, conten
 		}
 
 		// Handle cleanup and atomic rename
-		if downloadErr != nil {
-			// Remove temp file on error
+		// Check if context was cancelled or if there was a download error
+		if downloadErr != nil || ctx.Err() != nil {
+			// Remove temp file on error or cancellation
 			if removeErr := os.Remove(tempPath); removeErr != nil && !quiet {
 				fmt.Printf("Error removing temp file %s: %v\n", tempPath, removeErr)
 			}
