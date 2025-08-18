@@ -124,7 +124,7 @@ func (c *Client) GetDownloadInfo(url string) (*DownloadInfo, error) {
 // The operation can be cancelled using the provided context.
 func (c *Client) GetDownloadInfoWithContext(ctx context.Context, url string) (*DownloadInfo, error) {
 	c.v("GetDownloadInfo for %q", url)
-	resp, err := c.apiRequest(ctx, true, "HEAD", url, nil)
+	resp, err := c.apiRequest(ctx, true, http.MethodHead, url, nil)
 	if err != nil {
 		return nil, err
 	}
