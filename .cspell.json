@@ -8,6 +8,7 @@
     // words - list of words to be always considered correct
     "words": [
         "aigo",
+        "archlinux",
         "barclaycard",
         "buildx",
         "czds",
@@ -21,6 +22,7 @@
         "ldflags",
         "lpass",
         "mxtq",
+        "nfpms",
         "onyourside",
         "passfrom",
         "passin",
