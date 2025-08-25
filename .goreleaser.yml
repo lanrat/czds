@@ -27,6 +27,20 @@ builds:
     ldflags:
       - -s -w -X main.version={{.Version}}
 
+nfpms:
+  - id: czds
+    # Package info
+    maintainer: lanrat
+    homepage: https://github.com/lanrat/czds
+    description: |-
+      tools to interact with czds.icann.org
+    # Supported formats
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
+
 archives:
   - # This single archive definition handles all OSes.
     # The default format is 'tar.gz', which is used for linux and darwin.
