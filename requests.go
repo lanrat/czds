@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -387,7 +388,7 @@ func (c *Client) RequestAllTLDsExceptWithContext(ctx context.Context, reason str
 		default:
 		}
 
-		if exceptMap[tld.TLD] {
+		if exceptMap[strings.ToLower(tld.TLD)] {
 			// skip over excluded TLDs
 			continue
 		}
@@ -409,8 +410,10 @@ func (c *Client) RequestAllTLDsExceptWithContext(ctx context.Context, reason str
 	}
 
 	// submit request
+	// Only set AllTLDs:true when there are no exclusions.
+	// When exclusions exist, we must set AllTLDs:false so the API respects the filtered TLDNames list.
 	request := &RequestSubmission{
-		AllTLDs:   true,
+		AllTLDs:   len(except) == 0,
 		TLDNames:  requestTLDs,
 		Reason:    reason,
 		TcVersion: terms.Version,
@@ -556,7 +559,7 @@ func (c *Client) ExtendAllTLDsExceptWithContext(ctx context.Context, except []st
 			return nil, ctx.Err()
 		default:
 		}
-		if exceptMap[r.TLD] {
+		if exceptMap[strings.ToLower(r.TLD)] {
 			// skip over excluded TLDs
 			excludedCount++
 			continue

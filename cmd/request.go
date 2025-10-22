@@ -107,10 +107,7 @@ func requestCmd() *Command {
 // runRequest executes the request command logic based on the provided configuration.
 // It handles printing terms, showing TLD status, and processing requests, extensions, and cancellations.
 func runRequest(ctx context.Context, client *czds.Client, config *RequestConfig, verbose bool) error {
-	var excludeList []string
-	if config.Exclude != "" {
-		excludeList = strings.Split(config.Exclude, ",")
-	}
+	excludeMap := excludeListToMap(config.Exclude)
 
 	// Print terms
 	if config.PrintTerms {
@@ -128,14 +125,14 @@ func runRequest(ctx context.Context, client *czds.Client, config *RequestConfig,
 
 	// Handle requests
 	if config.RequestAll || len(config.RequestTLDs) > 0 {
-		if err := handleRequests(ctx, client, config, excludeList, verbose); err != nil {
+		if err := handleRequests(ctx, client, config, excludeMap, verbose); err != nil {
 			return err
 		}
 	}
 
 	// Handle extensions
 	if config.ExtendAll || len(config.ExtendTLDs) > 0 {
-		if err := handleExtensions(ctx, client, config, excludeList, verbose); err != nil {
+		if err := handleExtensions(ctx, client, config, excludeMap, verbose); err != nil {
 			return err
 		}
 	}
@@ -182,7 +179,7 @@ func printTLDStatus(ctx context.Context, client *czds.Client) error {
 
 // handleRequests processes zone access requests for specific TLDs or all available TLDs.
 // It requires a reason to be provided for the request.
-func handleRequests(ctx context.Context, client *czds.Client, config *RequestConfig, excludeList []string, verbose bool) error {
+func handleRequests(ctx context.Context, client *czds.Client, config *RequestConfig, excludeMap map[string]bool, verbose bool) error {
 	if len(config.Reason) == 0 {
 		return fmt.Errorf("must pass a reason to request TLDs")
 	}
@@ -194,6 +191,8 @@ func handleRequests(ctx context.Context, client *czds.Client, config *RequestCon
 		if verbose {
 			fmt.Println("Requesting all TLDs")
 		}
+		// Convert map to slice for library function
+		excludeList := mapToSlice(excludeMap)
 		requestedTLDs, err = client.RequestAllTLDsExceptWithContext(ctx, config.Reason, excludeList)
 	} else {
 		tlds := strings.Split(config.RequestTLDs, ",")
@@ -217,7 +216,7 @@ func handleRequests(ctx context.Context, client *czds.Client, config *RequestCon
 
 // handleExtensions processes extension requests for TLDs based on the configuration.
 // It can extend all available TLDs or specific TLDs listed in the configuration.
-func handleExtensions(ctx context.Context, client *czds.Client, config *RequestConfig, excludeList []string, verbose bool) error {
+func handleExtensions(ctx context.Context, client *czds.Client, config *RequestConfig, excludeMap map[string]bool, verbose bool) error {
 	var extendedTLDs []string
 	var err error
 
@@ -225,6 +224,8 @@ func handleExtensions(ctx context.Context, client *czds.Client, config *RequestC
 		if verbose {
 			fmt.Println("Requesting extension for all TLDs")
 		}
+		// Convert map to slice for library function
+		excludeList := mapToSlice(excludeMap)
 		extendedTLDs, err = client.ExtendAllTLDsExceptWithContext(ctx, excludeList)
 	} else {
 		tlds := strings.Split(config.ExtendTLDs, ",")

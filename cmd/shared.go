@@ -112,3 +112,17 @@ func excludeListToMap(excludeStr string) map[string]bool {
 	}
 	return out
 }
+
+// mapToSlice converts a map[string]bool to a slice of strings (the keys).
+// This is useful for converting exclude maps back to slices for library functions.
+func mapToSlice(m map[string]bool) []string {
+	if m == nil {
+		return nil
+	}
+
+	result := make([]string, 0, len(m))
+	for key := range m {
+		result = append(result, key)
+	}
+	return result
+}
