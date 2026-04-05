@@ -127,6 +127,31 @@ export CZDS_PASSWORD="your_password"
 czds download -verbose
 ```
 
+### Webhook Integration
+
+The download command supports webhook integration for pre-download approval and post-download notifications via environment variables:
+
+**Environment Variables:**
+
+- `PRECHECK_WEBHOOK_URL` - Batch pre-download approval endpoint (full URL)
+- `NOTIFICATION_WEBHOOK_URL` - Post-download notification endpoint (full URL)
+
+**Pre-Check:** All zones are checked in a single batch request before downloads start. Zones with `should_download: false` are skipped.
+
+**Notifications:** Sent immediately after each zone download completes (single-zone batches to maintain batch API format).
+
+**Failure Handling:** If pre-check fails (network error, server error), all zones proceed anyway (fail-open).
+
+**Example:**
+
+```bash
+export PRECHECK_WEBHOOK_URL=https://example.com/addzone/check
+export NOTIFICATION_WEBHOOK_URL=https://example.com/addzone
+czds download
+```
+
+See [cmd/webhook/README.md](cmd/webhook/README.md) for API details and server examples.
+
 ## Request Subcommand
 
 Submit a new zone request or modify an existing CZDS request. Be sure to view and accept the terms and conditions with the `-terms` flag.

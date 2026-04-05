@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/lanrat/czds"
+	"github.com/lanrat/czds/cmd/webhook"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -41,9 +43,10 @@ type DownloadConfig struct {
 // zoneInfo contains information about a zone file download task,
 // including the zone name, download URL, and local file path.
 type zoneInfo struct {
-	Name     string // Zone name (e.g., "com", "org")
-	Dl       string // Download URL for the zone file
-	FullPath string // Full local file path where zone will be saved
+	Name     string    // Zone name (e.g., "com", "org")
+	Dl       string    // Download URL for the zone file
+	FullPath string    // Full local file path where zone will be saved
+	Date     time.Time // Last modified date of the zone file
 }
 
 // downloadCmd creates and configures the download subcommand for the czds CLI.
@@ -124,16 +127,34 @@ func downloadCmd() *Command {
 				return fmt.Errorf("authentication failed: %w", err)
 			}
 
-			return runDownload(ctx, client, &config, gf.Verbose)
+			return runDownload(ctx, client, &config, &gf)
 		},
 	}
 }
 
 // runDownload executes the download command logic with parallel workers and retry handling.
 // It manages output directory creation, link retrieval, worker coordination, and error handling.
-func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfig, verbose bool) error {
+func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfig, gf *GlobalFlags) error {
+	verbose := gf.Verbose
+	quiet := config.Quiet
+
+	// Initialize webhook client from environment variables
+	webhookClient, err := webhook.NewFromEnv()
+	if err != nil {
+		return err
+	}
+
+	// Configure webhook client if enabled
+	if webhookClient != nil {
+		webhookClient.SetHeader("User-Agent", fmt.Sprintf("lanrat/czds %s", version))
+		webhookClient.SetHeader("X-CZDS-Username", gf.Username)
+		webhookClient.SetHeader("X-Zone-Source", "czds")
+		if verbose {
+			webhookClient.SetLogger(log.Default())
+		}
+	}
 	// Create output directory if it does not exist
-	_, err := os.Stat(config.OutDir)
+	_, err = os.Stat(config.OutDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if verbose {
@@ -162,6 +183,55 @@ func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfi
 	// Shuffle download links to better distribute load on CZDS
 	downloads = shuffle(downloads)
 
+	// Batch pre-download check if enabled
+	if webhookClient != nil && webhookClient.PrecheckEnabled() {
+		// Extract zone names from download URLs
+		zoneNames := make([]string, len(downloads))
+		for i, dl := range downloads {
+			zoneNames[i] = extractZoneName(dl)
+		}
+
+		dateStr := time.Now().Format(time.DateOnly)
+		approvedZones, err := webhookClient.BatchPreDownloadCheck(ctx, zoneNames, dateStr)
+
+		if err != nil {
+			// Fail-open: log error but proceed with all downloads
+			if !quiet {
+				fmt.Printf("Warning: Webhook pre-check failed, proceeding with all downloads: %v\n", err)
+			}
+		} else {
+			// Filter downloads to only approved zones
+			var filteredDownloads []string
+			skipped := 0
+			for i, dl := range downloads {
+				// Reuse the already-extracted zone name
+				zoneName := zoneNames[i]
+				if approvedZones[zoneName] {
+					filteredDownloads = append(filteredDownloads, dl)
+				} else {
+					skipped++
+					if verbose {
+						fmt.Printf("[%s] SKIPPED: webhook pre-check denied download\n", zoneName)
+					}
+				}
+			}
+
+			if !quiet {
+				fmt.Printf("Webhook pre-check complete: %d approved, %d skipped, %d total\n",
+					len(filteredDownloads), skipped, len(downloads))
+			}
+
+			downloads = filteredDownloads
+
+			if len(downloads) == 0 {
+				if !quiet {
+					fmt.Println("No zones to download after webhook filtering")
+				}
+				return nil
+			}
+		}
+	}
+
 	// Set up channels and sync - buffer channel based on parallel workers for better throughput
 	loadDone := make(chan bool)
 	inputChan := make(chan *zoneInfo, int(config.Parallel)*2)
@@ -176,7 +246,7 @@ func runDownload(ctx context.Context, client *czds.Client, config *DownloadConfi
 	}
 	for i := uint(0); i < config.Parallel; i++ {
 		g.Go(func() error {
-			return worker(ctx, client, config, inputChan, verbose)
+			return worker(ctx, client, config, webhookClient, inputChan, verbose)
 		})
 	}
 
@@ -225,8 +295,7 @@ func getDownloadLinks(ctx context.Context, client *czds.Client, config *Download
 		var filteredDownloads []string
 		for _, link := range downloads {
 			// Extract zone name from URL (e.g., "com.zone" -> "com")
-			fileName := path.Base(link)
-			zoneName := strings.TrimSuffix(fileName, ".zone")
+			zoneName := extractZoneName(link)
 			if zoneSet[strings.ToLower(zoneName)] {
 				filteredDownloads = append(filteredDownloads, link)
 			}
@@ -236,8 +305,7 @@ func getDownloadLinks(ctx context.Context, client *czds.Client, config *Download
 		if len(filteredDownloads) < len(zonesToDownload) {
 			foundZones := make(map[string]bool)
 			for _, link := range filteredDownloads {
-				fileName := path.Base(link)
-				zoneName := strings.TrimSuffix(fileName, ".zone")
+				zoneName := extractZoneName(link)
 				foundZones[strings.ToLower(zoneName)] = true
 			}
 
@@ -264,16 +332,25 @@ func getDownloadLinks(ctx context.Context, client *czds.Client, config *Download
 	return downloads, nil
 }
 
+// extractZoneName extracts the zone name from a download URL.
+// For example, "https://example.com/czds/downloads/com.zone" returns "com".
+func extractZoneName(downloadURL string) string {
+	fileName := path.Base(downloadURL)
+	return strings.TrimSuffix(fileName, ".zone")
+}
+
 // addLinks feeds download tasks to workers through the input channel.
 // It signals completion via loadDone channel and handles context cancellation.
 func addLinks(ctx context.Context, downloads []string, inputChan chan<- *zoneInfo, loadDone chan<- bool) error {
+	currentDate := time.Now()
 	for _, dl := range downloads {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case inputChan <- &zoneInfo{
-			Name: path.Base(dl),
+			Name: extractZoneName(dl),
 			Dl:   dl,
+			Date: currentDate,
 		}:
 		}
 	}
@@ -288,7 +365,7 @@ func addLinks(ctx context.Context, downloads []string, inputChan chan<- *zoneInf
 
 // worker is a goroutine that processes zone download tasks from inputChan.
 // It downloads zones with retry logic and handles context cancellation gracefully.
-func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, inputChan <-chan *zoneInfo, verbose bool) error {
+func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, webhookClient *webhook.Client, inputChan <-chan *zoneInfo, verbose bool) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -308,7 +385,7 @@ func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, in
 				default:
 				}
 
-				err = zoneDownload(ctx, client, config, zi, verbose)
+				err = zoneDownload(ctx, client, config, webhookClient, zi, verbose)
 				if err == nil {
 					// Success - exit retry loop
 					break
@@ -318,7 +395,7 @@ func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, in
 				// don't stop on an error that only affects a single zone
 				// fixes occasional HTTP 500s from CZDS
 				if verbose {
-					fmt.Printf("[%s] Attempt %d/%d failed: %s\n", path.Base(zi.Dl), attempt, config.Retries, err)
+					fmt.Printf("[%s] Attempt %d/%d failed: %s\n", zi.Name, attempt, config.Retries, err)
 				}
 
 				// If this was the last attempt, don't sleep
@@ -336,7 +413,7 @@ func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, in
 
 			// Handle final failure after all retries exhausted
 			if err != nil {
-				fmt.Printf("[%s] Max fail count hit after %d attempts; not downloading.\n", path.Base(zi.Dl), config.Retries)
+				fmt.Printf("[%s] Max fail count hit after %d attempts; not downloading.\n", zi.Name, config.Retries)
 				// cleanup partial file if it exists
 				if _, statErr := os.Stat(zi.FullPath); !os.IsNotExist(statErr) {
 					if removeErr := os.Remove(zi.FullPath); removeErr != nil {
@@ -351,9 +428,9 @@ func worker(ctx context.Context, client *czds.Client, config *DownloadConfig, in
 
 // zoneDownload handles the download of a single zone with local file checks and validation.
 // It manages file existence checks, redownload logic, and path safety.
-func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConfig, zi *zoneInfo, verbose bool) error {
+func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConfig, webhookClient *webhook.Client, zi *zoneInfo, verbose bool) error {
 	if verbose {
-		fmt.Printf("Downloading '%s'\n", zi.Dl)
+		fmt.Printf("[%s] Checking download requirements...\n", zi.Name)
 	}
 
 	info, err := client.GetDownloadInfoWithContext(ctx, zi.Dl)
@@ -391,9 +468,9 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 	localFileInfo, err := os.Stat(zi.FullPath)
 	if config.Force {
 		if verbose {
-			fmt.Printf("Forcing download of '%s'\n", zi.Dl)
+			fmt.Printf("[%s] Downloading: forced redownload\n", localFileName)
 		}
-		return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
+		return downloadTime(ctx, client, webhookClient, zi, info.ContentLength, config.Quiet, config.Progress, verbose)
 	}
 
 	// check if local file already exists
@@ -402,29 +479,42 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 		if localFileInfo.Size() != info.ContentLength {
 			// size differs, redownload
 			if verbose {
-				fmt.Printf("Size of local file (%d) differs from remote (%d), redownloading %s\n",
-					localFileInfo.Size(), info.ContentLength, localFileName)
+				fmt.Printf("[%s] Downloading: local size (%d bytes) differs from remote (%d bytes)\n",
+					localFileName, localFileInfo.Size(), info.ContentLength)
 			}
-			return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
+			return downloadTime(ctx, client, webhookClient, zi, info.ContentLength, config.Quiet, config.Progress, verbose)
 		}
 		// check local file modification date
 		if localFileInfo.ModTime().Before(info.LastModified) {
 			// remote file is newer, redownload
 			if verbose {
-				fmt.Println("Remote file is newer than local, redownloading")
+				fmt.Printf("[%s] Downloading: remote file is newer (local: %s, remote: %s)\n",
+					localFileName, localFileInfo.ModTime().Format(time.RFC3339), info.LastModified.Format(time.RFC3339))
 			}
-			return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
+			return downloadTime(ctx, client, webhookClient, zi, info.ContentLength, config.Quiet, config.Progress, verbose)
 		}
 		// local copy is good, skip download
 		if verbose {
-			fmt.Printf("Local file '%s' matched remote, skipping\n", localFileName)
+			fmt.Printf("[%s] SKIPPED: local file is up-to-date (size: %d bytes, modified: %s)\n",
+				localFileName, localFileInfo.Size(), localFileInfo.ModTime().Format(time.RFC3339))
 		}
 		return nil
 	}
 
 	if os.IsNotExist(err) {
 		// file does not exist, download
-		return downloadTime(ctx, client, zi, info.ContentLength, config.Quiet, config.Progress)
+		if verbose {
+			fmt.Printf("[%s] Downloading: file does not exist locally\n", localFileName)
+		}
+		return downloadTime(ctx, client, webhookClient, zi, info.ContentLength, config.Quiet, config.Progress, verbose)
+	}
+
+	// File exists but no redownload flag - skip
+	if err == nil {
+		if verbose {
+			fmt.Printf("[%s] SKIPPED: file exists locally\n", localFileName)
+		}
+		return nil
 	}
 
 	return err
@@ -433,7 +523,7 @@ func zoneDownload(ctx context.Context, client *czds.Client, config *DownloadConf
 // downloadTime downloads a zone file and reports the time taken for the operation.
 // It provides timing feedback and progress reporting unless quiet mode is enabled.
 // Uses atomic file operations - downloads to a temporary file first, then renames on success.
-func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, contentLength int64, quiet, showProgress bool) error {
+func downloadTime(ctx context.Context, client *czds.Client, webhookClient *webhook.Client, zi *zoneInfo, contentLength int64, quiet, showProgress, verbose bool) error {
 	// Create temporary file in same directory for atomic operation
 	tempPath := zi.FullPath + ".tmp"
 	file, err := os.Create(tempPath)
@@ -462,6 +552,30 @@ func downloadTime(ctx context.Context, client *czds.Client, zi *zoneInfo, conten
 				// Clean up temp file if rename fails
 				if removeErr := os.Remove(tempPath); removeErr != nil && !quiet {
 					fmt.Printf("Error removing temp file after rename failure %s: %v\n", tempPath, removeErr)
+				}
+			} else {
+				// Successfully downloaded and renamed - send notification if enabled
+				if webhookClient != nil && webhookClient.NotifyEnabled() {
+					if verbose {
+						fmt.Printf("[%s] Sending webhook notification...\n", zi.Name)
+					}
+					dateStr := zi.Date.Format(time.DateOnly)
+					result, err := webhookClient.PostDownloadNotify(ctx, zi.Name, zi.FullPath, dateStr)
+					if err != nil {
+						if !quiet {
+							fmt.Printf("[%s] ERROR: Webhook notification failed (network/connection error): %v\n", zi.Name, err)
+						}
+					} else if result != nil {
+						if result.Status == "error" {
+							if !quiet {
+								fmt.Printf("[%s] ERROR: Webhook returned error status: %s\n", zi.Name, result.Message)
+							}
+						} else if verbose {
+							fmt.Printf("[%s] Webhook notification successful (status: %s)\n", zi.Name, result.Status)
+						}
+					} else if verbose {
+						fmt.Printf("[%s] Webhook notification sent (no response body)\n", zi.Name)
+					}
 				}
 			}
 		}
@@ -527,8 +641,7 @@ func pruneLinks(downloads []string, exclude string) []string {
 	newlist := make([]string, 0, len(downloads))
 	for _, u := range downloads {
 		// Extract zone name from URL (e.g., "com.zone" -> "com")
-		fileName := path.Base(u)
-		zoneName := strings.TrimSuffix(fileName, ".zone")
+		zoneName := extractZoneName(u)
 
 		// O(1) lookup instead of O(n*m) string suffix matching
 		if !excludeMap[strings.ToLower(zoneName)] {
