@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Go module dependencies. Grouped into a single PR so a routine patch sweep
+  # does not open one PR per module.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # Keep the workflow action pins current. Major bumps stay ungrouped so a
+  # breaking runtime change lands in its own reviewable PR.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
