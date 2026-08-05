@@ -27,3 +27,16 @@ jobs:
 
     - name: Build
       run: make
+
+  govulncheck:
+    name: Run govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      # go-version-file is deliberately omitted: the action defaults to
+      # go-version 'stable' and that input wins when both are set (it warns and
+      # ignores the file), so passing go.mod here would be a no-op. Scanning
+      # against the latest patched Go is what we want anyway.
+      - id: govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-package: ./...
